@@ -1,0 +1,12 @@
+# Antigravity Rules - Coding Standards
+
+## Language & Naming
+- **Code Language:** All code, variables, function names, and comments MUST be in English.
+- **Naming Convention:** - Variables/Functions: `camelCase`
+    - Components/Classes: `PascalCase`
+    - Constants: `UPPER_SNAKE_CASE`
+    - Files: `kebab-case` or match component name.
+
+## Database Schema (English)
+- Tables: `products`, `sync_queue`, `categories`, `users`.
+- Fields: `id`, `uuid`, `name`, `description`, `price`, `quantity`, `is_synced`, `created_at`.

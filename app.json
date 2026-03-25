@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "SmartS",
+    "slug": "smarts",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "smarts",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-camera",
+      "expo-notifications",
+      "expo-image-picker",
+      "expo-secure-store"
+    ]
+  }
+}

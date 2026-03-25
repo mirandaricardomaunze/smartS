@@ -1,0 +1,53 @@
+node_modules/
+.expo/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+veda-keys
+*.iml
+.idea/
+.gradle/
+local.properties
+.DS_Store
+*.swp
+.vscode/
+
+# Build artifacts
+/android/
+/ios/
+*.apk
+*.aab
+*.ipa
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# User temporary scratch files
+output.txt
+ts_errors*.txt
+fix.js
+fix.py
+prompt.md
+test-config.js
+test-requires.js

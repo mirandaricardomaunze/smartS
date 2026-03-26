@@ -133,5 +133,136 @@ export const dashboardService = {
       faltas: stats.low, 
       sobras: stats.empty
     }
+  },
+  
+  getCategorySales(): { labels: string[]; data: number[] } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { labels: [], data: [] }
+
+    const data = db.getAllSync<{ name: string; total: number }>(
+      `SELECT c.name, SUM(oi.total) as total
+       FROM order_items oi
+       JOIN products p ON oi.product_id = p.id
+       JOIN categories c ON p.category_id = c.id
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.company_id = ? AND o.status = 'completed' AND o.created_at >= date('now', '-30 days')
+       GROUP BY c.id
+       ORDER BY total DESC
+       LIMIT 5`,
+      [activeCompanyId]
+    )
+
+    return {
+      labels: data.map(i => i.name.substring(0, 10).toUpperCase()),
+      data: data.map(i => i.total)
+    }
+  },
+
+  getFinancialTrends(): { labels: string[]; revenue: number[]; expenses: number[] } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { labels: [], revenue: [], expenses: [] }
+
+    const labels: string[] = []
+    const revenue: number[] = []
+    const expenses: number[] = []
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const monthStr = d.toISOString().substring(0, 7) // YYYY-MM
+      const label = d.toLocaleDateString('pt-PT', { month: 'short' }).toUpperCase()
+
+      const rev = db.getFirstSync<{ total: number }>(
+        "SELECT SUM(total_amount) as total FROM orders WHERE company_id = ? AND status = 'completed' AND created_at LIKE ?",
+        [activeCompanyId, `${monthStr}%`]
+      )?.total || 0
+
+      const exp = db.getFirstSync<{ total: number }>(
+        "SELECT SUM(amount) as total FROM financial_transactions WHERE company_id = ? AND status = 'paid' AND date LIKE ?",
+        [activeCompanyId, `${monthStr}%`]
+      )?.total || 0
+
+      labels.push(label)
+      revenue.push(rev)
+      expenses.push(exp)
+    }
+
+    return { labels, revenue, expenses }
+  },
+
+  getInventoryValueData(): { labels: string[]; data: number[] } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { labels: [], data: [] }
+
+    const data = db.getAllSync<{ name: string; value: number }>(
+      `SELECT c.name, SUM(p.current_stock * p.purchase_price) as value
+       FROM products p
+       JOIN categories c ON p.category_id = c.id
+       WHERE p.company_id = ? AND p.is_active = 1
+       GROUP BY c.id
+       ORDER BY value DESC
+       LIMIT 5`,
+      [activeCompanyId]
+    )
+
+    return {
+      labels: data.map(i => i.name.substring(0, 10).toUpperCase()),
+      data: data.map(i => i.value)
+    }
+  },
+
+  getAttendanceSummary(): { labels: string[]; data: number[] } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { labels: [], data: [] }
+
+    const labels: string[] = []
+    const data: number[] = []
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().split('T')[0]
+      const label = d.toLocaleDateString('pt-PT', { weekday: 'short' }).substring(0, 3).toUpperCase()
+
+      const stats = db.getFirstSync<{ present: number; total: number }>(
+        `SELECT 
+          SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
+          COUNT(*) as total
+         FROM attendance 
+         WHERE company_id = ? AND date = ?`,
+        [activeCompanyId, dateStr]
+      ) || { present: 0, total: 0 }
+
+      const rate = stats.total > 0 ? (stats.present / stats.total) * 100 : 0
+      labels.push(label)
+      data.push(rate)
+    }
+
+    return { labels, data }
+  },
+
+  getCategoryMargins(): { labels: string[]; data: number[] } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { labels: [], data: [] }
+
+    const data = db.getAllSync<{ name: string; margin: number }>(
+      `SELECT 
+        c.name,
+        AVG((oi.unit_price - p.purchase_price) / oi.unit_price * 100) as margin
+       FROM order_items oi
+       JOIN products p ON oi.product_id = p.id
+       JOIN categories c ON p.category_id = c.id
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.company_id = ? AND o.status = 'completed' AND p.purchase_price > 0
+       GROUP BY c.id
+       ORDER BY margin DESC
+       LIMIT 5`,
+      [activeCompanyId]
+    )
+
+    return {
+      labels: data.map(i => i.name.substring(0, 10).toUpperCase()),
+      data: data.map(i => Math.round(i.margin))
+    }
   }
 }

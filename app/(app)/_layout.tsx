@@ -1,5 +1,6 @@
 import { Tabs, useRouter } from 'expo-router'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { AppState } from 'react-native'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import {
   LayoutDashboard,
@@ -10,15 +11,27 @@ import {
   LayoutGrid,
   Package
 } from 'lucide-react-native'
-import { useColorScheme } from 'react-native' // switched from nativewind to avoid premount warning
+import { useColorScheme } from 'nativewind'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View } from 'react-native'
+import { useSyncStore } from '@/features/sync/store/syncStore'
+import { useSettings } from '@/features/settings/hooks/useSettings'
+import { useBiometrics } from '@/hooks/useBiometrics'
+import BiometricLock from '@/components/ui/BiometricLock'
+import { realtimeService } from '@/features/sync/services/realtimeService'
+import { pullFromSupabase } from '@/utils/syncData'
+import { notificationService } from '@/features/notifications/services/notificationService'
 
 export default function AppLayout() {
   const { user, isLoading } = useAuthStore()
+  const { settings } = useSettings()
+  const { isSupported, isEnrolled, authenticateAsync } = useBiometrics()
   const router = useRouter()
-  const colorScheme = useColorScheme()
+  const { colorScheme } = useColorScheme()
   const insets = useSafeAreaInsets()
+  
+  const [isLocked, setIsLocked] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
 
   const isDark = colorScheme === 'dark'
 
@@ -33,10 +46,67 @@ export default function AppLayout() {
     }
   }, [user, isLoading])
 
+  // Biometrics Lock Logic
+  useEffect(() => {
+    if (settings.biometrics_enabled === 1 && isSupported && isEnrolled) {
+      setIsLocked(true)
+    } else {
+      setIsLocked(false)
+    }
+  }, [settings.biometrics_enabled, isSupported, isEnrolled])
+
+  const handleUnlock = async () => {
+    if (isAuthenticating) return
+    setIsAuthenticating(true)
+    const success = await authenticateAsync('Confirmar identidade para aceder ao SmartS')
+    if (success) {
+      setIsLocked(false)
+    }
+    setIsAuthenticating(false)
+  }
+
+  // Handle AppState (Lock on background)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (
+        nextAppState === 'active' && 
+        settings.biometrics_enabled === 1 && 
+        isSupported && 
+        isEnrolled
+      ) {
+        setIsLocked(true)
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [settings.biometrics_enabled, isSupported, isEnrolled]);
+
+  // Realtime & Initial Sync
+  useEffect(() => {
+    if (user?.company_id) {
+      // 1. Initial Pull (Background)
+      pullFromSupabase().catch(console.error)
+
+      // 2. Subscribe to live changes
+      const unsubscribe = realtimeService.subscribe(user.company_id, () => {
+        useSyncStore.getState().triggerRefresh()
+      })
+
+      return () => unsubscribe()
+    }
+  }, [user?.company_id])
+
   if (isLoading) return null
+
+  if (isLocked) {
+    return <BiometricLock onRetry={handleUnlock} />
+  }
 
   return (
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: activeColor,
@@ -65,7 +135,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="dashboard/index"
         options={{
-          title: 'Início',
+          title: 'Painel',
           tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
         }}
       />
@@ -91,20 +161,6 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="finance/index"
-        options={{
-          title: 'Caixa',
-          tabBarIcon: ({ color }) => <Wallet size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="control/index"
-        options={{
-          title: 'Módulos',
-          tabBarIcon: ({ color }) => <LayoutGrid size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="settings/index"
         options={{
           title: 'Definições',
@@ -112,29 +168,39 @@ export default function AppLayout() {
         }}
       />
 
-      {/* Hidden nested routes */}
+      <Tabs.Screen name="control/index" options={{ href: null }} />
       <Tabs.Screen name="categories/index" options={{ href: null }} />
       <Tabs.Screen name="inventory/audit" options={{ href: null }} />
       <Tabs.Screen name="scanner/index" options={{ href: null }} />
       <Tabs.Screen name="movements/index" options={{ href: null }} />
+      <Tabs.Screen name="movements/create" options={{ href: null }} />
       <Tabs.Screen name="customers/index" options={{ href: null }} />
       <Tabs.Screen name="suppliers/index" options={{ href: null }} />
       <Tabs.Screen name="orders/create" options={{ href: null }} />
-      <Tabs.Screen name="products/[id]" options={{ href: null }} />
       <Tabs.Screen name="products/create" options={{ href: null }} />
+      <Tabs.Screen name="products/[id]" options={{ href: null }} />
       <Tabs.Screen name="products/edit/[id]" options={{ href: null }} />
-      <Tabs.Screen name="movements/create" options={{ href: null }} />
       <Tabs.Screen name="expiry/index" options={{ href: null }} />
       <Tabs.Screen name="notes/index" options={{ href: null }} />
       <Tabs.Screen name="notes/create" options={{ href: null }} />
       <Tabs.Screen name="reports/index" options={{ href: null }} />
       <Tabs.Screen name="history/index" options={{ href: null }} />
       <Tabs.Screen name="notifications/index" options={{ href: null }} />
+      <Tabs.Screen name="finance/index" options={{ href: null }} />
       <Tabs.Screen name="sync/index" options={{ href: null }} />
       <Tabs.Screen name="backup/index" options={{ href: null }} />
       <Tabs.Screen name="users/index" options={{ href: null }} />
       <Tabs.Screen name="users/create" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/analytics" options={{ href: null }} />
+      <Tabs.Screen name="hr/attendance/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/employees/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/employees/[id]" options={{ href: null }} />
+      <Tabs.Screen name="hr/leaves/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/organization/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/payroll/index" options={{ href: null }} />
+      <Tabs.Screen name="hr/payroll/inss" options={{ href: null }} />
     </Tabs>
   )
 }

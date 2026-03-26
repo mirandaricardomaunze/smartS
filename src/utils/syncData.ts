@@ -59,3 +59,51 @@ export async function syncData(): Promise<void> {
     }
   }
 }
+
+// Fetches remote changes from Supabase to SQLite
+export async function pullFromSupabase(): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  const companyId = session.user.user_metadata.company_id
+  if (!companyId) return
+
+  const tables = [
+    'categories',
+    'suppliers',
+    'products',
+    'customers',
+    'orders',
+    'order_items',
+    'stock_movements',
+    'expiry_lots',
+    'financial_transactions'
+  ]
+
+  for (const table of tables) {
+    try {
+      // 1. Get last updated record from local SQLite to optimize pull
+      // Note: For now we'll do a full fetch or a simple high-water mark if updated_at exists
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .eq('company_id', companyId)
+      
+      if (error) throw error
+      if (!data || data.length === 0) continue
+
+      // 2. Perform upsert into SQLite
+      for (const record of data) {
+        const fields = Object.keys(record)
+        const placeholders = fields.map(() => '?').join(', ')
+        const values = fields.map(f => record[f])
+        
+        // We use INSERT OR REPLACE (upsert)
+        const query = `INSERT OR REPLACE INTO ${table} (${fields.join(', ')}) VALUES (${placeholders})`
+        db.runSync(query, values)
+      }
+    } catch (e) {
+      console.error(`Failed to pull table ${table}:`, e)
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, useColorScheme, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useAuthStore } from '@/features/auth/store/authStore'
@@ -23,12 +23,14 @@ import { useFormatter } from '@/hooks/useFormatter'
 
 export default function ProductsListScreen() {
   const router = useRouter()
-  const { products, isLoading, createProduct } = useProducts()
+  const { products, isLoading, createProduct, loadMore, hasMore } = useProducts()
   const { user } = useAuthStore()
   const { settings, updateSettings } = useSettings()
   const { formatCurrency } = useFormatter()
   const [search, setSearch] = useState('')
   const [modalVisible, setModalVisible] = useState(false)
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   const canCreate = user && hasPermission(user.role, 'create_products')
 
@@ -43,6 +45,7 @@ export default function ProductsListScreen() {
     return products.filter(p => 
       p.name.toLowerCase().includes(search.toLowerCase()) || 
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      (p.reference && p.reference.toLowerCase().includes(search.toLowerCase())) ||
       (p.barcode && p.barcode.includes(search))
     )
   }, [products, search])
@@ -59,7 +62,7 @@ export default function ProductsListScreen() {
           <Card variant="premium" className="flex-row items-center p-4">
             <View className="w-20 h-20 rounded-2xl overflow-hidden mr-4 shadow-premium-sm">
               <LinearGradient
-                colors={isLowStock ? ['#fee2e2', '#fecaca'] : ['#eef2ff', '#e0e7ff']}
+                colors={isLowStock ? (isDark ? ['#450a0a', '#7f1d1d'] : ['#fee2e2', '#fecaca']) : (isDark ? ['#1e1b4b', '#312e81'] : ['#eef2ff', '#e0e7ff'])}
                 className="flex-1 items-center justify-center border border-white/20"
               >
                 <PackageOpen size={32} color={isLowStock ? "#ef4444" : "#4f46e5"} />
@@ -71,6 +74,11 @@ export default function ProductsListScreen() {
               </Text>
               <View className="flex-row items-center mb-2">
                  <Text style={{ fontFamily: 'Inter-Black' }} className="text-[9px] font-black text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest">SKU: {item.sku}</Text>
+                 {item.reference && (
+                   <View className="bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded mr-2">
+                     <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[8px] font-bold text-slate-500 dark:text-slate-400">REF: {item.reference}</Text>
+                   </View>
+                 )}
                  <Badge label={item.category} variant="info" className="py-0.5 px-2" />
               </View>
               <View className="flex-row items-center justify-between">
@@ -162,6 +170,15 @@ export default function ProductsListScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerClassName="px-6 pb-32"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            hasMore && products.length > 0 ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color="#4f46e5" />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <EmptyState 
               title="Nada encontrado"

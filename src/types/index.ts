@@ -5,6 +5,14 @@ export type OrderStatus = 'pending' | 'picking' | 'completed' | 'cancelled' | 's
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'
 export type SyncStatus = 0 | 1
 
+export interface BaseEntity {
+  readonly id: string
+  company_id: string
+  readonly created_at: string
+  updated_at: string
+  synced: SyncStatus
+}
+
 export interface Company {
   readonly id: string
   name: string
@@ -50,6 +58,7 @@ export interface Supplier {
   nif: string | null
   readonly created_at: string
   synced: SyncStatus
+  low_stock_count?: number // UI only
 }
 
 export interface Customer {
@@ -62,6 +71,7 @@ export interface Customer {
   nif: string | null
   readonly created_at: string
   synced: SyncStatus
+  total_debt?: number // UI only
 }
 
 export interface Product {
@@ -69,6 +79,7 @@ export interface Product {
   company_id: string
   name: string
   barcode: string | null
+  reference: string | null
   sku: string
   category_id: string | null
   category?: string // Joined field for UI
@@ -205,4 +216,5 @@ export interface Settings {
   language: string
   unit_of_measure: string
   include_tax: 0 | 1
+  biometrics_enabled: 0 | 1
 }

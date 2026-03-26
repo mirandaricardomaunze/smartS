@@ -4,20 +4,29 @@ import { User } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 
 export const usersRepository = {
-  getAll(): User[] {
+  getAll(companyId: string): User[] {
     return db.getAllSync<User>(
-      'SELECT * FROM users ORDER BY name ASC'
+      'SELECT * FROM users WHERE company_id = ? ORDER BY name ASC',
+      [companyId]
     )
   },
-  getById(id: string): User | null {
+  getById(companyId: string, id: string): User | null {
     return db.getFirstSync<User>(
-      'SELECT * FROM users WHERE id = ?', [id]
+      'SELECT * FROM users WHERE id = ? AND company_id = ?', [id, companyId]
     ) ?? null
   },
-  getByEmail(email: string): User | null {
+  getByEmail(companyId: string, email: string): User | null {
+    return db.getFirstSync<User>(
+      'SELECT * FROM users WHERE email = ? AND company_id = ?', [email, companyId]
+    ) ?? null
+  },
+  getGlobalByEmail(email: string): User | null {
     return db.getFirstSync<User>(
       'SELECT * FROM users WHERE email = ?', [email]
     ) ?? null
+  },
+  getGlobalCount(): number {
+    return db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM users')?.count || 0
   },
   create(data: Omit<User, 'id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string }): User {
     const user: User = {
@@ -35,27 +44,26 @@ export const usersRepository = {
     addToSyncQueue('users', 'INSERT', user)
     return user
   },
-  update(id: string, data: Partial<User>): void {
+  update(companyId: string, id: string, data: Partial<User>): void {
     const updated = { ...data, updated_at: new Date().toISOString(), synced: 0 }
     
-    const setClause = Object.keys(updated)
-      .map(key => `${key} = ?`)
-      .join(', ')
-    const values = Object.values(updated)
+    const fields = Object.keys(updated).filter(key => key !== 'id' && key !== 'company_id')
+    const setClause = fields.map(key => `${key} = ?`).join(', ')
+    const values = fields.map(key => (updated as any)[key])
     
     db.runSync(
-      `UPDATE users SET ${setClause} WHERE id = ?`,
-      [...values, id]
+      `UPDATE users SET ${setClause} WHERE id = ? AND company_id = ?`,
+      [...values, id, companyId]
     )
     
-    const current = this.getById(id)
+    const current = this.getById(companyId, id)
     if (current) {
       addToSyncQueue('users', 'UPDATE', current)
     }
   },
-  delete(id: string): void {
+  delete(companyId: string, id: string): void {
     const updated_at = new Date().toISOString()
-    db.runSync('UPDATE users SET is_active=0, synced=0, updated_at=? WHERE id=?', [updated_at, id])
-    addToSyncQueue('users', 'UPDATE', { id, is_active: 0, updated_at })
+    db.runSync('UPDATE users SET is_active=0, synced=0, updated_at=? WHERE id=? AND company_id=?', [updated_at, id, companyId])
+    addToSyncQueue('users', 'UPDATE', { id, company_id: companyId, is_active: 0, updated_at })
   },
 }

@@ -7,6 +7,7 @@ export interface RestockItem {
   current_stock: number
   minimum_stock: number
   suggested_quantity: number
+  purchase_price: number
 }
 
 export const procurementService = {
@@ -15,7 +16,7 @@ export const procurementService = {
    */
   getRestockNeeds(supplierId: string): RestockItem[] {
     const query = `
-      SELECT id, name, current_stock, minimum_stock
+      SELECT id, name, current_stock, minimum_stock, purchase_price
       FROM products
       WHERE supplier_id = ? AND is_active = 1 AND current_stock <= minimum_stock
     `
@@ -26,7 +27,8 @@ export const procurementService = {
       name: p.name,
       current_stock: p.current_stock,
       minimum_stock: p.minimum_stock,
-      suggested_quantity: Math.max(p.minimum_stock * 2 - p.current_stock, p.minimum_stock)
+      suggested_quantity: Math.max(p.minimum_stock * 2 - p.current_stock, p.minimum_stock),
+      purchase_price: p.purchase_price || 0
     }))
   },
 

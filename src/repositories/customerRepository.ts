@@ -4,15 +4,21 @@ import { generateUUID } from '@/utils/uuid'
 import { syncRepository } from './syncRepository'
 
 export const customerRepository = {
-  getAll: (companyId: string): Customer[] => {
+  getAll: (companyId: string, limit: number = 20, offset: number = 0): Customer[] => {
     return db.getAllSync<Customer>(
-      'SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC',
-      [companyId]
+      `SELECT c.*, 
+       (SELECT SUM(total_amount - discount) FROM orders o 
+        WHERE o.customer_id = c.id AND o.status NOT IN ('paid', 'completed', 'cancelled')) as total_debt
+       FROM customers c 
+       WHERE c.company_id = ? 
+       ORDER BY name ASC
+       LIMIT ? OFFSET ?`,
+      [companyId, limit, offset]
     )
   },
 
-  getById: (id: string): Customer | null => {
-    return db.getFirstSync<Customer>('SELECT * FROM customers WHERE id = ?', [id])
+  getById: (companyId: string, id: string): Customer | null => {
+    return db.getFirstSync<Customer>('SELECT * FROM customers WHERE id = ? AND company_id = ?', [id, companyId])
   },
 
   create: (data: Omit<Customer, 'id' | 'created_at' | 'synced'>): Customer => {
@@ -31,23 +37,23 @@ export const customerRepository = {
     return customer
   },
 
-  update: (id: string, data: Partial<Customer>): void => {
-    const fields = Object.keys(data).filter(key => key !== 'id' && key !== 'created_at')
+  update: (companyId: string, id: string, data: Partial<Customer>): void => {
+    const fields = Object.keys(data).filter(key => key !== 'id' && key !== 'created_at' && key !== 'company_id')
     if (fields.length === 0) return
 
-    const query = `UPDATE customers SET ${fields.map(f => `${f} = ?`).join(', ')}, synced = 0 WHERE id = ?`
-    const values = [...fields.map(f => (data as any)[f]), id]
+    const query = `UPDATE customers SET ${fields.map(f => `${f} = ?`).join(', ')}, synced = 0 WHERE id = ? AND company_id = ?`
+    const values = [...fields.map(f => (data as any)[f]), id, companyId]
 
     db.runSync(query, values)
     
-    const updated = db.getFirstSync<Customer>('SELECT * FROM customers WHERE id = ?', [id])
+    const updated = db.getFirstSync<Customer>('SELECT * FROM customers WHERE id = ? AND company_id = ?', [id, companyId])
     if (updated) {
       syncRepository.addToQueue('customers', 'UPDATE', updated)
     }
   },
 
-  delete: (id: string): void => {
-    db.runSync('DELETE FROM customers WHERE id = ?', [id])
-    syncRepository.addToQueue('customers', 'DELETE', { id })
+  delete: (companyId: string, id: string): void => {
+    db.runSync('DELETE FROM customers WHERE id = ? AND company_id = ?', [id, companyId])
+    syncRepository.addToQueue('customers', 'DELETE', { id, company_id: companyId })
   }
 }

@@ -41,6 +41,7 @@ export default function ProductFormModal({
     name: '',
     sku: '',
     barcode: '',
+    reference: '',
     category_id: '',
     category_name: '',
     supplier_id: '',
@@ -77,6 +78,7 @@ export default function ProductFormModal({
         name: initialData.name,
         sku: initialData.sku,
         barcode: initialData.barcode || '',
+        reference: initialData.reference || '',
         category_id: initialData.category_id || '',
         category_name: initialData.category || '',
         supplier_id: initialData.supplier_id || '',
@@ -95,6 +97,7 @@ export default function ProductFormModal({
         name: '',
         sku: '',
         barcode: '',
+        reference: '',
         category_id: '',
         category_name: '',
         supplier_id: '',
@@ -194,6 +197,7 @@ export default function ProductFormModal({
       await onSave({
         ...formData,
         barcode: formData.barcode || null,
+        reference: formData.reference || null,
         minimum_stock: parseInt(formData.minimum_stock) || 0,
         current_stock: parseInt(formData.current_stock) || 0,
         purchase_price: parseFloat(formData.purchase_price) || 0,
@@ -291,6 +295,16 @@ export default function ProductFormModal({
                   value={formData.name}
                   onChangeText={(v) => handleChange('name', v)}
                   error={errors.name}
+                />
+              </View>
+
+              <View className="mb-6">
+                <Input
+                  label="Referência Interna"
+                  placeholder="Ex: REF-12345"
+                  value={formData.reference}
+                  onChangeText={(v) => handleChange('reference', v)}
+                  icon={<Tag size={18} color="rgba(79, 70, 229, 0.4)" />}
                 />
               </View>
 

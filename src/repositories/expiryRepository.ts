@@ -4,14 +4,16 @@ import { ExpiryLot } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 
 export const expiryRepository = {
-  getAll(): ExpiryLot[] {
+  getAll(companyId: string): ExpiryLot[] {
     return db.getAllSync<ExpiryLot>(
-      'SELECT * FROM expiry_lots ORDER BY expiry_date ASC'
+      'SELECT * FROM expiry_lots WHERE company_id = ? ORDER BY expiry_date ASC', 
+      [companyId]
     )
   },
-  getByProductId(productId: string): ExpiryLot[] {
+  getByProductId(companyId: string, productId: string): ExpiryLot[] {
     return db.getAllSync<ExpiryLot>(
-      'SELECT * FROM expiry_lots WHERE product_id = ? ORDER BY expiry_date ASC', [productId]
+      'SELECT * FROM expiry_lots WHERE company_id = ? AND product_id = ? ORDER BY expiry_date ASC', 
+      [companyId, productId]
     )
   },
   create(data: Omit<ExpiryLot, 'id' | 'created_at' | 'updated_at' | 'synced'>): ExpiryLot {
@@ -30,26 +32,25 @@ export const expiryRepository = {
     addToSyncQueue('expiry_lots', 'INSERT', lot)
     return lot
   },
-  update(id: string, data: Partial<ExpiryLot>): void {
+  update(companyId: string, id: string, data: Partial<ExpiryLot>): void {
     const updated = { ...data, updated_at: new Date().toISOString(), synced: 0 }
     
-    const setClause = Object.keys(updated)
-      .map(key => `${key} = ?`)
-      .join(', ')
-    const values = Object.values(updated)
+    const fields = Object.keys(updated).filter(key => key !== 'id' && key !== 'company_id')
+    const setClause = fields.map(key => `${key} = ?`).join(', ')
+    const values = fields.map(key => (updated as any)[key])
     
     db.runSync(
-      `UPDATE expiry_lots SET ${setClause} WHERE id = ?`,
-      [...values, id]
+      `UPDATE expiry_lots SET ${setClause} WHERE id = ? AND company_id = ?`,
+      [...values, id, companyId]
     )
 
-    const current = db.getFirstSync<ExpiryLot>('SELECT * FROM expiry_lots WHERE id = ?', [id])
+    const current = db.getFirstSync<ExpiryLot>('SELECT * FROM expiry_lots WHERE id = ? AND company_id = ?', [id, companyId])
     if (current) {
       addToSyncQueue('expiry_lots', 'UPDATE', current)
     }
   },
-  delete(id: string): void {
-    db.runSync('DELETE FROM expiry_lots WHERE id=?', [id])
-    addToSyncQueue('expiry_lots', 'DELETE', { id })
+  delete(companyId: string, id: string): void {
+    db.runSync('DELETE FROM expiry_lots WHERE id=? AND company_id=?', [id, companyId])
+    addToSyncQueue('expiry_lots', 'DELETE', { id, company_id: companyId })
   },
 }

@@ -4,19 +4,26 @@ import { generateUUID } from '@/utils/uuid'
 import { syncRepository } from './syncRepository'
 
 export const orderRepository = {
-  getAll: (companyId: string): Order[] => {
+  getAll: (companyId: string, limit: number = 20, offset: number = 0): Order[] => {
     return db.getAllSync<Order>(
-      'SELECT * FROM orders WHERE company_id = ? ORDER BY created_at DESC',
-      [companyId]
+      'SELECT * FROM orders WHERE company_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [companyId, limit, offset]
     )
   },
 
-  getById: (id: string): Order | null => {
-    return db.getFirstSync<Order>('SELECT * FROM orders WHERE id = ?', [id])
+  getById: (companyId: string, id: string): Order | null => {
+    return db.getFirstSync<Order>('SELECT * FROM orders WHERE id = ? AND company_id = ?', [id, companyId])
   },
 
-  getOrderItems: (orderId: string): OrderItem[] => {
-    return db.getAllSync<OrderItem>('SELECT * FROM order_items WHERE order_id = ?', [orderId])
+  getOrderItems: (companyId: string, orderId: string): (OrderItem & { name: string, reference: string | null })[] => {
+    return db.getAllSync<any>(
+      `SELECT oi.*, p.name, p.reference 
+       FROM order_items oi 
+       JOIN orders o ON o.id = oi.order_id 
+       JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = ? AND o.company_id = ?`, 
+      [orderId, companyId]
+    )
   },
 
   create: (order: Omit<Order, 'id' | 'created_at' | 'updated_at' | 'synced'>, items: Omit<OrderItem, 'id' | 'order_id'>[]): Order => {
@@ -53,11 +60,11 @@ export const orderRepository = {
     }
   },
 
-  updateStatus: (id: string, status: Order['status']): void => {
+  updateStatus: (companyId: string, id: string, status: Order['status']): void => {
     const now = new Date().toISOString()
-    db.runSync('UPDATE orders SET status = ?, updated_at = ?, synced = 0 WHERE id = ?', [status, now, id])
+    db.runSync('UPDATE orders SET status = ?, updated_at = ?, synced = 0 WHERE id = ? AND company_id = ?', [status, now, id, companyId])
     
-    const updated = db.getFirstSync<Order>('SELECT * FROM orders WHERE id = ?', [id])
+    const updated = db.getFirstSync<Order>('SELECT * FROM orders WHERE id = ? AND company_id = ?', [id, companyId])
     if (updated) {
       syncRepository.addToQueue('orders', 'UPDATE', updated)
     }

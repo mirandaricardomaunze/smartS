@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Loading from '@/components/ui/Loading'
 import SupplierFormModal from '@/features/suppliers/components/SupplierFormModal'
-import { Plus, Building2, Phone, Mail, Search, Trash2, Edit2, ShoppingCart } from 'lucide-react-native'
+import { Plus, Building2, Phone, Mail, Search, Trash2, Edit2, ShoppingCart, AlertCircle } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import { feedback } from '@/utils/haptics'
 import { Supplier } from '@/types'
@@ -93,6 +93,14 @@ export default function SuppliersScreen() {
             <Mail size={10} color="#94a3b8" />
             <Text className="text-[10px] text-slate-400 ml-1" numberOfLines={1}>{item.email || '--'}</Text>
           </View>
+          {item.low_stock_count && item.low_stock_count > 0 ? (
+            <View className="flex-row items-center mt-2 bg-rose-50 dark:bg-rose-900/10 self-start px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-900/20">
+              <AlertCircle size={10} color="#ef4444" />
+              <Text className="text-[10px] text-rose-600 dark:text-rose-400 font-bold ml-1">
+                {item.low_stock_count} {item.low_stock_count === 1 ? 'item em falta' : 'itens em falta'}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       <View className="flex-row items-center">
@@ -102,9 +110,9 @@ export default function SuppliersScreen() {
               setSelectedSupplier(item)
               setRestockVisible(true)
             }}
-            className="p-2 w-10 h-10 bg-indigo-50 dark:bg-indigo-900/10 rounded-full items-center justify-center mr-2"
+            className={`p-2 w-10 h-10 ${item.low_stock_count && item.low_stock_count > 0 ? 'bg-rose-500' : 'bg-indigo-50 dark:bg-indigo-900/10'} rounded-full items-center justify-center mr-2`}
         >
-          <ShoppingCart size={18} color="#4f46e5" />
+          <ShoppingCart size={18} color={item.low_stock_count && item.low_stock_count > 0 ? '#ffffff' : '#4f46e5'} />
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -141,7 +149,7 @@ export default function SuppliersScreen() {
         }
       />
 
-      <View className="px-6 mb-4">
+      <View className="px-6 top-0 mt-6 mb-4">
         <Input
           placeholder="Procurar fornecedores..."
           value={search}

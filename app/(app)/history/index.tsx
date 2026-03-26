@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import React, { useMemo, useState, useEffect } from 'react'
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import Card from '@/components/ui/Card'
 import Loading from '@/components/ui/Loading'
 import EmptyState from '@/components/ui/EmptyState'
 import Input from '@/components/ui/Input'
-import { historyService } from '@/features/history/services/historyService'
-import { HistoryEntry } from '@/types'
+import { useHistory } from '@/features/history/hooks/useHistory'
+import { HistoryEntry, User } from '@/types'
 import { useFormatter } from '@/hooks/useFormatter'
+import { usersRepository } from '@/repositories/usersRepository'
+import { useCompanyStore } from '@/store/companyStore'
 import { 
   History as HistoryIcon, 
   Search, 
@@ -27,28 +29,36 @@ import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export default function HistoryListScreen() {
+  const { history: logs, isLoading, loadMore, hasMore, reload } = useHistory()
+  const { activeCompanyId } = useCompanyStore()
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<string>('ALL')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  
-  // In a real app, this would be a hook with query/loading state
-  const logs = useMemo(() => {
-    try {
-      return historyService.getAll()
-    } catch (e) {
-      console.error(e)
-      return []
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (activeCompanyId) {
+      const users = usersRepository.getAll(activeCompanyId)
+      const map: Record<string, string> = {}
+      users.forEach(u => { map[u.id] = u.name })
+      setUsersMap(map)
     }
-  }, [])
+  }, [activeCompanyId])
 
   const filteredLogs = useMemo(() => {
-    if (!search) return logs
+    let base = logs
+    if (filter !== 'ALL') {
+      base = base.filter(log => log.action.toUpperCase() === filter)
+    }
+    
+    if (!search) return base
     const s = search.toLowerCase()
-    return logs.filter(log => 
+    return base.filter(log => 
       log.action.toLowerCase().includes(s) || 
       log.table_name.toLowerCase().includes(s) ||
       log.record_id.toLowerCase().includes(s)
     )
-  }, [logs, search])
+  }, [logs, search, filter])
 
   const { formatCurrency } = useFormatter()
 
@@ -113,7 +123,9 @@ export default function HistoryListScreen() {
                 </Text>
                 <View className="flex-row items-center mt-1">
                   <UserIcon size={12} color="#94a3b8" />
-                  <Text className="text-slate-500 dark:text-slate-400 text-xs ml-1 mr-3">ID: {item.user_id.substring(0, 8)}</Text>
+                  <Text className="text-slate-500 dark:text-slate-400 text-xs ml-1 mr-3">
+                    {usersMap[item.user_id] || `ID: ${item.user_id.substring(0, 8)}`}
+                  </Text>
                   <Calendar size={12} color="#94a3b8" />
                   <Text className="text-slate-500 dark:text-slate-400 text-xs ml-1">{dateLabel}</Text>
                 </View>
@@ -126,10 +138,15 @@ export default function HistoryListScreen() {
           {isExpanded && (
             <View className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
               <Text className="text-slate-400 dark:text-slate-500 text-xs mb-2 font-bold uppercase tracking-widest">Detalhes do Registo</Text>
-              <View className="bg-slate-900 p-3 rounded-xl">
-                <Text className="text-emerald-400 font-mono text-xs">
-                  {JSON.stringify(JSON.parse(item.data), null, 2)}
-                </Text>
+              <View className="bg-slate-900/50 dark:bg-slate-950 p-4 rounded-2xl border border-white/5">
+                {Object.entries(JSON.parse(item.data)).map(([key, value], idx) => (
+                  <View key={idx} className="flex-row justify-between mb-1">
+                    <Text className="text-slate-500 text-[10px] uppercase font-bold">{key}:</Text>
+                    <Text className="text-slate-300 text-xs font-mono ml-2 flex-1 text-right" numberOfLines={1}>
+                      {typeof value === 'object' ? '...' : String(value)}
+                    </Text>
+                  </View>
+                ))}
               </View>
               <View className="mt-3 flex-row items-center">
                 <Tag size={12} color="#94a3b8" />
@@ -155,8 +172,22 @@ export default function HistoryListScreen() {
           value={search}
           onChangeText={setSearch}
           icon={<Search size={20} color="#94a3b8" />}
-          className="bg-white/50 dark:bg-slate-900/50"
+          className="bg-white/50 dark:bg-slate-900/50 mb-4"
         />
+        
+        <View className="flex-row space-x-2">
+          {['ALL', 'CREATE', 'UPDATE', 'DELETE'].map((f) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg border ${filter === f ? 'bg-primary border-primary' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}
+            >
+              <Text className={`text-[10px] font-bold ${filter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                {f === 'ALL' ? 'TUDO' : f === 'CREATE' ? 'CRIAR' : f === 'UPDATE' ? 'EDITAR' : 'APAGAR'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <FlatList
@@ -164,7 +195,20 @@ export default function HistoryListScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={<EmptyState title="Nenhuma atividade registada" icon={<HistoryIcon size={48} color="#94a3b8" />} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          hasMore && logs.length > 0 ? (
+            <View className="py-4 items-center">
+              <ActivityIndicator size="small" color="#4f46e5" />
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          isLoading ? <Loading /> : <EmptyState title="Nenhuma atividade registada" icon={<HistoryIcon size={48} color="#94a3b8" />} />
+        }
+        onRefresh={reload}
+        refreshing={isLoading}
       />
     </Screen>
   )

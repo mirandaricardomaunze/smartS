@@ -6,19 +6,40 @@ export function useMovements(productId?: string) {
   const [movements, setMovements] = useState<StockMovement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const PAGE_SIZE = 50
 
-  const load = useCallback(() => {
+  const load = useCallback((isInitial = true) => {
     try {
       setIsLoading(true)
       setError(null)
-      const data = productId ? movementsService.getByProductId(productId) : movementsService.getAll()
-      setMovements(data)
+      const currentOffset = isInitial ? 0 : page * PAGE_SIZE
+      const data = productId 
+        ? movementsService.getByProductId(productId, PAGE_SIZE, currentOffset) 
+        : movementsService.getAll(PAGE_SIZE, currentOffset)
+      
+      if (isInitial) {
+        setMovements(data)
+        setPage(1)
+      } else {
+        setMovements(prev => [...prev, ...data])
+        setPage(prev => prev + 1)
+      }
+      
+      setHasMore(data.length === PAGE_SIZE)
     } catch (e) {
       setError('Erro ao carregar movimentos')
     } finally {
       setIsLoading(false)
     }
-  }, [productId])
+  }, [productId, page])
+
+  const loadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      load(false)
+    }
+  }, [isLoading, hasMore, load])
 
   useEffect(() => { load() }, [load])
 
@@ -34,5 +55,5 @@ export function useMovements(productId?: string) {
     }
   }, [])
 
-  return { movements, isLoading, error, createMovement, reload: load }
+  return { movements, isLoading, error, createMovement, reload: load, loadMore, hasMore }
 }

@@ -31,12 +31,14 @@ import {
   Wallet,
   Receipt,
   CalendarClock,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Lightbulb,
+  Info
 } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
 import { useNotificationStore } from '@/features/notifications/store/notificationStore'
 import { notificationService } from '@/features/notifications/services/notificationService'
-import { BarChart, ProgressChart, PieChart }
+import { BarChart, ProgressChart, PieChart, LineChart }
   from 'react-native-chart-kit'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated'
@@ -47,7 +49,11 @@ import { useFormatter } from '@/hooks/useFormatter'
 import { useFinance } from '@/features/finance/hooks/useFinance'
 import ExpenseFormModal from '@/features/finance/components/ExpenseFormModal'
 import { hasPermission } from '@/utils/permissions'
-import { intelligenceService, StockForecast, ABCAnalysis } from '@/services/intelligenceService'
+import { StockForecast, ABCAnalysis, ProfitabilityAnalysis } from '@/services/intelligenceService'
+import { useIntelligence } from '@/hooks/useIntelligence'
+import FinancialTrendChart from '@/features/dashboard/components/FinancialTrendChart'
+import InventoryValueChart from '@/features/dashboard/components/InventoryValueChart'
+import AttendanceTrendChart from '@/features/dashboard/components/AttendanceTrendChart'
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
@@ -60,6 +66,11 @@ export default function DashboardScreen() {
     salesPerformance,
     bestSellers,
     lowStockAlerts,
+    categorySales,
+    financialTrends,
+    inventoryValue,
+    attendanceMetrics,
+    categoryMargins,
     isLoading
   } = useDashboard()
 
@@ -70,8 +81,7 @@ export default function DashboardScreen() {
   const { stats: financeStats, fetchFinance, createTransaction } = useFinance()
   const [isExpenseModalVisible, setIsExpenseModalVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [stockForecast, setStockForecast] = useState<StockForecast[]>([])
-  const [abcAnalysis, setAbcAnalysis] = useState<ABCAnalysis[]>([])
+  const { forecast, abcData, profitData, isLoading: isIntelLoading, refresh: refreshIntel } = useIntelligence()
 
   const activeCompany = useMemo(() =>
     companies.find(c => c.id === activeCompanyId) || { name: 'Empresa Padrão' },
@@ -79,18 +89,9 @@ export default function DashboardScreen() {
   )
 
   useEffect(() => {
-    async function initNotifications() {
-      await notificationService.checkLowStockAlerts()
-      await notificationService.checkExpiryAlerts()
-      await fetchNotifications()
-      
-      const forecast = intelligenceService.getStockForecast()
-      const abc = intelligenceService.getABCAnalysis()
-      setStockForecast(forecast)
-      setAbcAnalysis(abc)
-    }
-    initNotifications()
-  }, [])
+    fetchNotifications()
+    refreshIntel()
+  }, [activeCompanyId])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -165,13 +166,41 @@ export default function DashboardScreen() {
                </TouchableOpacity>
             </View>
 
-            <Animated.View entering={FadeInDown}>
-              <Text className="text-white/80 font-semibold text-lg mt-1">
-                Resumo de Atividade
-              </Text>
-            </Animated.View>
-          </LinearGradient>
-        </View>
+              <Animated.View entering={FadeInDown}>
+                <Text className="text-white/80 font-semibold text-lg mt-1">
+                  Resumo de Atividade
+                </Text>
+              </Animated.View>
+            </LinearGradient>
+          </View>
+
+          {/* NEW: Smart Insight Featured Card */}
+          {forecast.length > 0 && (
+            <View className="px-6 -mt-6">
+              <Animated.View entering={FadeInUp.delay(200)}>
+                <Card variant="premium" className="bg-slate-900 border-indigo-500/30 p-5 rounded-[32px] shadow-premium-lg">
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-8 h-8 bg-indigo-500/20 rounded-xl items-center justify-center mr-3">
+                      <Lightbulb size={18} color="#818cf8" />
+                    </View>
+                    <Text className="text-indigo-300 text-[10px] font-black uppercase tracking-[2px]">Insight Inteligente</Text>
+                  </View>
+                  <Text className="text-white font-bold text-base mb-2">Ação Sugerida</Text>
+                  <Text className="text-indigo-100/70 text-sm leading-5">
+                    O produto <Text className="text-white font-black">"{forecast[0].name}"</Text> esgotará em aproximadamente <Text className="text-white font-black">{forecast[0].days_remaining} dias</Text>. 
+                    Considere fazer um pedido ao fornecedor hoje para evitar ruptura de stock.
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => router.push('/(app)/control')}
+                    className="mt-4 flex-row items-center"
+                  >
+                    <Text className="text-indigo-400 font-bold text-xs mr-2">Ver análise detalhada</Text>
+                    <ArrowUpRight size={14} color="#818cf8" />
+                  </TouchableOpacity>
+                </Card>
+              </Animated.View>
+            </View>
+          )}
         {/* Premium Dashboard Metrics Hub */}
         {/* Premium Dashboard Metrics Hub */}
         <View className="px-6 mt-6">
@@ -182,7 +211,7 @@ export default function DashboardScreen() {
                   </View>
                   <View className="items-end">
                     <Text className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1">Receita Total</Text>
-                    <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
+                    <Text adjustsFontSizeToFit numberOfLines={1} style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
                       {formatCurrency(salesPerformance.revenue)}
                     </Text>
                   </View>
@@ -195,7 +224,7 @@ export default function DashboardScreen() {
                     <ArrowDownRight size={24} color="#f43f5e" />
                   </View>
                   <Text className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1">Despesas</Text>
-                  <Text style={{ fontFamily: 'Inter-Black' }} className="text-xl font-black text-slate-900 dark:text-white" numberOfLines={1}>
+                  <Text adjustsFontSizeToFit style={{ fontFamily: 'Inter-Black' }} className="text-xl font-black text-slate-900 dark:text-white" numberOfLines={1}>
                     {formatCurrency(financeStats.expense)}
                   </Text>
               </Card>
@@ -205,7 +234,7 @@ export default function DashboardScreen() {
                     <TrendingUp size={24} color="#10b981" />
                   </View>
                   <Text className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1">Lucro Líquido</Text>
-                  <Text style={{ fontFamily: 'Inter-Black' }} className="text-xl font-black text-slate-900 dark:text-white" numberOfLines={1}>
+                  <Text adjustsFontSizeToFit style={{ fontFamily: 'Inter-Black' }} className="text-xl font-black text-slate-900 dark:text-white" numberOfLines={1}>
                     {formatCurrency(salesPerformance.profit)}
                   </Text>
               </Card>
@@ -213,7 +242,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Proactive Insights Section */}
-        {stockForecast.length > 0 && (
+        {forecast.length > 0 && (
           <View className="px-6 mt-10">
             <View className="flex-row items-center justify-between mb-4">
                <Text style={{ fontFamily: 'Inter-Bold' }} className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Insights Proativos</Text>
@@ -221,9 +250,9 @@ export default function DashboardScreen() {
                   <Text className="text-indigo-400 text-xs font-bold">Ver BI</Text>
                </TouchableOpacity>
             </View>
-
+ 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
-                {stockForecast.map((item, index) => (
+                {forecast.map((item, index) => (
                   <Card key={index} variant="premium" className="w-64 p-5 mr-4 rounded-[24px] border-indigo-500/10 dark:border-indigo-500/5">
                      <View className="flex-row items-center mb-3">
                         <View className={`w-8 h-8 rounded-xl items-center justify-center mr-3 ${item.days_remaining <= 3 ? 'bg-rose-500/20' : 'bg-amber-500/20'}`}>
@@ -240,7 +269,7 @@ export default function DashboardScreen() {
                   </Card>
                 ))}
                 
-                {abcAnalysis.filter(a => a.classification === 'A').slice(0, 3).map((item, index) => (
+                {abcData.filter((a: any) => a.classification === 'A').slice(0, 3).map((item: any, index: number) => (
                    <Card key={`abc-${index}`} variant="premium" className="w-64 p-5 mr-4 rounded-[24px] border-emerald-500/10 dark:border-emerald-500/5">
                       <View className="flex-row items-center mb-3">
                          <View className="w-8 h-8 bg-emerald-500/20 rounded-xl items-center justify-center mr-3">
@@ -258,6 +287,38 @@ export default function DashboardScreen() {
           </View>
         )}
 
+        {/* NEW: Profitability Analysis Section */}
+        {profitData.length > 0 && (
+          <View className="px-6 mt-10">
+            <View className="flex-row items-center justify-between mb-4">
+               <Text style={{ fontFamily: 'Inter-Bold' }} className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Campeões de Lucro</Text>
+               <View className="bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                  <Text className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase">Net Margin</Text>
+               </View>
+            </View>
+
+            <Card className="bg-white/90 dark:bg-slate-900/40 border border-slate-100 dark:border-white/10 p-4 shadow-lg rounded-[24px]">
+               {profitData.slice(0, 5).map((item, index) => (
+                 <View key={index} className={`flex-row items-center justify-between py-3 ${index !== profitData.length - 1 ? 'border-b border-white/5' : ''}`}>
+                    <View className="flex-row items-center flex-1">
+                        <View className="w-10 h-10 bg-emerald-500/20 rounded-full items-center justify-center mr-3">
+                           <TrendingUp size={18} color="#10b981" />
+                        </View>
+                        <View className="flex-1">
+                           <Text className="text-slate-900 dark:text-white font-bold text-sm" numberOfLines={1}>{item.name}</Text>
+                           <Text className="text-slate-500 dark:text-slate-400 text-[10px] font-bold">{item.total_sold} vendas • {item.margin_percentage.toFixed(1)}% margem</Text>
+                        </View>
+                    </View>
+                    <View className="items-end">
+                      <Text className="text-emerald-500 font-black text-sm">+{formatCurrency(item.total_profit)}</Text>
+                      <Text className="text-slate-400 text-[8px] uppercase font-bold">Lucro Líquido</Text>
+                    </View>
+                 </View>
+               ))}
+            </Card>
+          </View>
+        )}
+
         {/* Sales Chart Section */}
         <View className="px-6 mt-10">
            <View className="flex-row items-center justify-between mb-4">
@@ -268,25 +329,116 @@ export default function DashboardScreen() {
            </View>
 
            <Card className="bg-white/90 dark:bg-slate-900/40 border border-slate-100 dark:border-white/10 p-4 items-center shadow-lg rounded-[24px]">
-              <BarChart
+              <LineChart
                 data={{
                   labels: salesPerformance.volumeLabels.length > 0 ? salesPerformance.volumeLabels : ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'],
                   datasets: [{ data: salesPerformance.volumeData.length > 0 ? salesPerformance.volumeData : [0, 0, 0, 0, 0, 0, 0] }]
                 }}
                 width={Dimensions.get('window').width - 80}
                 height={180}
-                yAxisLabel=""
-                yAxisSuffix=""
-                chartConfig={chartConfig}
-                verticalLabelRotation={0}
-                fromZero
-                showValuesOnTopOfBars={false}
-                flatColor={true}
+                chartConfig={{
+                  ...chartConfig,
+                  propsForBackgroundLines: { strokeWidth: 0 },
+                }}
+                bezier
+                style={{ borderRadius: 16, paddingRight: 35 }}
+                withDots={true}
                 withInnerLines={false}
-                style={{ borderRadius: 16 }}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withHorizontalLines={false}
               />
            </Card>
         </View>
+
+        {/* BI Estratégico: Novos Gráficos */}
+        <Animated.View entering={FadeInUp.delay(400)} className="px-6 mt-12">
+            <Text style={{ fontFamily: 'Inter-Bold' }} className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-6">Análise Estratégica</Text>
+            
+            <FinancialTrendChart 
+              labels={financialTrends.labels}
+              revenue={financialTrends.revenue}
+              expenses={financialTrends.expenses}
+            />
+
+            <InventoryValueChart 
+              labels={inventoryValue.labels}
+              data={inventoryValue.data}
+            />
+
+            <AttendanceTrendChart 
+              labels={attendanceMetrics.labels}
+              data={attendanceMetrics.data}
+            />
+        </Animated.View>
+
+        {/* NEW: Category Sales Section */}
+        {categorySales.data.length > 0 && (
+          <View className="px-6 mt-10">
+             <View className="flex-row items-center justify-between mb-4">
+                <Text style={{ fontFamily: 'Inter-Bold' }} className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Vendas por Categoria</Text>
+                <View className="bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                    <Text className="text-emerald-600 dark:text-emerald-300 text-[10px] font-bold uppercase">Top 5 categorias</Text>
+                </View>
+             </View>
+
+             <Card className="bg-white/90 dark:bg-slate-900/40 border border-slate-100 dark:border-white/10 p-4 items-center shadow-lg rounded-[24px]">
+                <BarChart
+                  data={{
+                    labels: categorySales.labels,
+                    datasets: [{ data: categorySales.data }]
+                  }}
+                  width={Dimensions.get('window').width - 80}
+                  height={180}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  chartConfig={{
+                    ...chartConfig,
+                    color: (opacity = 1) => isDark ? `rgba(16, 185, 129, ${opacity})` : `rgba(16, 185, 129, ${opacity})`, // Emerald
+                    barPercentage: 0.6,
+                  }}
+                  verticalLabelRotation={15}
+                  fromZero
+                  style={{ borderRadius: 16, paddingRight: 35 }}
+                  withInnerLines={false}
+                />
+             </Card>
+          </View>
+        )}
+
+        {/* NEW: Category Margins (Profitability) Section */}
+        {categoryMargins.data.length > 0 && (
+          <View className="px-6 mt-10">
+             <View className="flex-row items-center justify-between mb-4">
+                <Text style={{ fontFamily: 'Inter-Bold' }} className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Margens por Categoria</Text>
+                <View className="bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                    <Text className="text-indigo-600 dark:text-indigo-300 text-[10px] font-bold uppercase">Margem Média %</Text>
+                </View>
+             </View>
+
+             <Card className="bg-white/90 dark:bg-slate-900/40 border border-slate-100 dark:border-white/10 p-4 items-center shadow-lg rounded-[24px]">
+                <BarChart
+                  data={{
+                    labels: categoryMargins.labels,
+                    datasets: [{ data: categoryMargins.data }]
+                  }}
+                  width={Dimensions.get('window').width - 80}
+                  height={180}
+                  yAxisLabel=""
+                  yAxisSuffix="%"
+                  chartConfig={{
+                    ...chartConfig,
+                    color: (opacity = 1) => isDark ? `rgba(99, 102, 241, ${opacity})` : `rgba(79, 70, 229, ${opacity})`,
+                    barPercentage: 0.6,
+                  }}
+                  verticalLabelRotation={15}
+                  fromZero
+                  style={{ borderRadius: 16, paddingRight: 35 }}
+                  withInnerLines={false}
+                />
+             </Card>
+          </View>
+        )}
 
         {/* Stock Health Circular Chart Section */}
         <View className="px-6 mt-10">
@@ -349,7 +501,7 @@ export default function DashboardScreen() {
                            <Text className="text-slate-500 dark:text-slate-100 text-[10px] font-bold">{item.quantity} unidades vendidas</Text>
                         </View>
                     </View>
-                    <Text className="text-emerald-400 font-black text-xs">{formatCurrency(item.revenue)}</Text>
+                    <Text adjustsFontSizeToFit numberOfLines={1} className="text-emerald-400 font-black text-xs flex-1 text-right ml-2">{formatCurrency(item.revenue)}</Text>
                  </View>
                )) : (
                  <Text className="text-slate-500 text-sm py-4 text-center">Nenhuma venda registada</Text>

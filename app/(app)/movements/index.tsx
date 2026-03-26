@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useMovements } from '@/features/movements/hooks/useMovements'
 import { useProducts } from '@/features/products/hooks/useProducts'
@@ -19,7 +19,7 @@ import { feedback } from '@/utils/haptics'
 
 export default function MovementsListScreen() {
   const router = useRouter()
-  const { movements, isLoading: movementsLoading, createMovement } = useMovements()
+  const { movements, isLoading: movementsLoading, createMovement, loadMore, hasMore } = useMovements()
   const { products, isLoading: productsLoading } = useProducts()
   const { user } = useAuthStore()
 
@@ -97,9 +97,14 @@ export default function MovementsListScreen() {
         </View>
         <View className="flex-1 border-b border-slate-50 dark:border-slate-800/50 pb-4">
           <View className="flex-row justify-between items-start mb-1">
-            <Text style={{ fontFamily: 'Inter-Bold' }} className="text-base font-bold text-slate-800 dark:text-white flex-1 mr-2" numberOfLines={1}>
-              {productName}
-            </Text>
+            <View className="flex-1 mr-2">
+              <Text style={{ fontFamily: 'Inter-Bold' }} className="text-base font-bold text-slate-800 dark:text-white" numberOfLines={1}>
+                {productName}
+              </Text>
+              {product?.reference && (
+                <Text style={{ fontFamily: 'Inter-Medium' }} className="text-[10px] font-semibold text-primary uppercase">REF: {product.reference}</Text>
+              )}
+            </View>
             <Text style={{ fontFamily: 'Inter-Black' }} className={`text-base font-black ${colorClass}`}>
                {item.type === 'exit' ? '-' : '+'}{item.quantity}
             </Text>
@@ -169,6 +174,15 @@ export default function MovementsListScreen() {
           data={groupedMovements}
           keyExtractor={(item) => item.date}
           contentContainerClassName="px-6 pt-6 pb-20"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            hasMore && movements.length > 0 ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color="#4f46e5" />
+              </View>
+            ) : null
+          }
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInUp.delay(index * 100)} className="mb-6">
               <View className="flex-row items-center mb-4">

@@ -5,16 +5,16 @@ import { generateUUID } from '@/utils/uuid'
 import { productsRepository } from './productsRepository'
 
 export const movementsRepository = {
-  getAll(companyId: string): StockMovement[] {
+  getAll(companyId: string, limit: number = 50, offset: number = 0): StockMovement[] {
     return db.getAllSync<StockMovement>(
-      'SELECT * FROM movements WHERE company_id = ? ORDER BY created_at DESC',
-      [companyId]
+      'SELECT * FROM movements WHERE company_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [companyId, limit, offset]
     )
   },
-  getByProductId(companyId: string, productId: string): StockMovement[] {
+  getByProductId(companyId: string, productId: string, limit: number = 50, offset: number = 0): StockMovement[] {
     return db.getAllSync<StockMovement>(
-      'SELECT * FROM movements WHERE company_id = ? AND product_id = ? ORDER BY created_at DESC', 
-      [companyId, productId]
+      'SELECT * FROM movements WHERE company_id = ? AND product_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?', 
+      [companyId, productId, limit, offset]
     )
   },
   create(data: Omit<StockMovement, 'id' | 'created_at' | 'synced'>): StockMovement {
@@ -32,7 +32,7 @@ export const movementsRepository = {
     )
 
     // Update product stock immediately
-    const product = productsRepository.getById(movement.product_id)
+    const product = productsRepository.getById(movement.company_id, movement.product_id)
     if (product) {
        let newStock = product.current_stock
        if (movement.type === 'entry' || movement.type === 'adjustment') {
@@ -40,7 +40,7 @@ export const movementsRepository = {
        } else if (movement.type === 'exit') {
           newStock -= movement.quantity
        }
-       productsRepository.update(product.id, { current_stock: newStock })
+       productsRepository.update(product.id, movement.company_id, { current_stock: newStock })
     }
 
     addToSyncQueue('movements', 'INSERT', movement)

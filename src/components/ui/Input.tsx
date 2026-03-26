@@ -1,5 +1,6 @@
-import React from 'react'
-import { View, Text, TextInput, TextInputProps } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, TextInput, TextInputProps, TouchableOpacity } from 'react-native'
+import { Eye, EyeOff } from 'lucide-react-native'
 
 interface InputProps extends TextInputProps {
   label?: string
@@ -10,7 +11,10 @@ interface InputProps extends TextInputProps {
   textStyle?: any
 }
 
-export default function Input({ label, error, icon, className, containerStyle, labelStyle, textStyle, ...props }: InputProps) {
+export default function Input({ label, error, icon, className, containerStyle, labelStyle, textStyle, secureTextEntry, ...props }: InputProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const isPasswordField = secureTextEntry === true
+
   return (
     <View className={`w-full mb-4 ${className || ''}`}>
       {label && <Text style={labelStyle} className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</Text>}
@@ -25,9 +29,22 @@ export default function Input({ label, error, icon, className, containerStyle, l
           placeholderTextColor="rgba(255,255,255,0.4)"
           cursorColor="#4f46e5"
           accessibilityLabel={label || props.placeholder}
-          accessibilityInvalid={!!error}
+          aria-invalid={!!error}
+          secureTextEntry={isPasswordField && !isPasswordVisible}
           {...props}
         />
+        {isPasswordField && (
+          <TouchableOpacity 
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            className="p-2 ml-1"
+          >
+            {isPasswordVisible ? (
+              <EyeOff size={20} color="#64748b" />
+            ) : (
+              <Eye size={20} color="#64748b" />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
       {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
     </View>

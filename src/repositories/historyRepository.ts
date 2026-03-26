@@ -4,10 +4,10 @@ import { generateUUID } from '@/utils/uuid'
 import { addToSyncQueue } from '@/utils/syncData'
 
 export const historyRepository = {
-  getAll(companyId: string): HistoryEntry[] {
+  getAll(companyId: string, limit: number = 50, offset: number = 0): HistoryEntry[] {
     return db.getAllSync<HistoryEntry>(
-      'SELECT * FROM history WHERE company_id = ? ORDER BY created_at DESC',
-      [companyId]
+      'SELECT * FROM history WHERE company_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [companyId, limit, offset]
     )
   },
   log(companyId: string, action: string, tableName: string, recordId: string, userId: string, data: any): void {

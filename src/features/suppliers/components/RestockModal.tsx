@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, Share } from 'react-native'
-import { X, PackageOpen, MessageSquare, Clipboard, AlertCircle, ShoppingCart } from 'lucide-react-native'
+import { X, PackageOpen, MessageSquare, Clipboard, AlertCircle, ShoppingCart, FileDown } from 'lucide-react-native'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Supplier } from '@/types'
 import { procurementService } from '@/services/procurementService'
+import { pdfService } from '@/services/pdfService'
+import { useCompanyStore } from '@/store/companyStore'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { feedback } from '@/utils/haptics'
+import { useToastStore } from '@/store/useToastStore'
 
 interface RestockModalProps {
   isVisible: boolean
@@ -22,6 +25,8 @@ export default function RestockModal({ isVisible, onClose, supplier }: RestockMo
 
   if (!supplier) return null
 
+  const { getActiveCompany } = useCompanyStore()
+
   const handleShare = async () => {
     feedback.light()
     const message = procurementService.generateRestockMessage(supplier.name, restockItems)
@@ -32,6 +37,21 @@ export default function RestockModal({ isVisible, onClose, supplier }: RestockMo
       })
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const handleGeneratePDF = async () => {
+    feedback.medium()
+    const company = getActiveCompany()
+    try {
+      await pdfService.generatePurchaseOrder(
+        company || { name: 'SmartS Business' },
+        supplier,
+        restockItems
+      )
+      useToastStore.getState().show('Ordem de Compra PDF gerada!', 'success')
+    } catch (error) {
+      useToastStore.getState().show('Erro ao gerar PDF', 'error')
     }
   }
 
@@ -73,13 +93,26 @@ export default function RestockModal({ isVisible, onClose, supplier }: RestockMo
               </Text>
             </View>
 
-            <Button
-              title="Gerar e Enviar Pedido"
-              variant="primary"
-              className="h-14 rounded-2xl shadow-lg shadow-indigo-500/20"
-              icon={<MessageSquare size={20} color="white" />}
-              onPress={handleShare}
-            />
+            <View className="flex-row items-center space-x-3 gap-x-3">
+              <View className="flex-1">
+                <Button
+                  title="WhatsApp"
+                  variant="primary"
+                  className="h-14 rounded-2xl shadow-lg shadow-indigo-500/20"
+                  icon={<MessageSquare size={20} color="white" />}
+                  onPress={handleShare}
+                />
+              </View>
+              <View className="flex-1">
+                <Button
+                  title="Gerar PDF"
+                  variant="secondary"
+                  className="h-14 rounded-2xl border-indigo-200 dark:border-indigo-900"
+                  icon={<FileDown size={20} color="#4f46e5" />}
+                  onPress={handleGeneratePDF}
+                />
+              </View>
+            </View>
           </>
         ) : (
           <View className="items-center justify-center py-20">

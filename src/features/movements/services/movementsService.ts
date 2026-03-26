@@ -7,15 +7,15 @@ import { useCompanyStore } from '@/store/companyStore'
 import { StockMovement } from '@/types'
 
 export const movementsService = {
-  getAll(): StockMovement[] {
+  getAll(limit: number = 50, offset: number = 0): StockMovement[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
-    return movementsRepository.getAll(activeCompanyId)
+    return movementsRepository.getAll(activeCompanyId, limit, offset)
   },
-  getByProductId(productId: string): StockMovement[] {
+  getByProductId(productId: string, limit: number = 50, offset: number = 0): StockMovement[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
-    return movementsRepository.getByProductId(activeCompanyId, productId)
+    return movementsRepository.getByProductId(activeCompanyId, productId, limit, offset)
   },
   create(data: Omit<StockMovement, 'id' | 'created_at' | 'synced' | 'user_id' | 'company_id'>): StockMovement {
     const { user } = useAuthStore.getState()
@@ -27,7 +27,10 @@ export const movementsService = {
         throw new Error('Utilizador não associado a uma empresa')
     }
 
-    const product = productsRepository.getById(data.product_id)
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) throw new Error('Empresa não selecionada')
+
+    const product = productsRepository.getById(activeCompanyId, data.product_id)
     if (!product) {
         throw new Error('Produto não encontrado')
     }

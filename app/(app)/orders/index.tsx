@@ -35,7 +35,7 @@ type TabType = 'pending' | 'picking' | 'completed'
 
 export default function OrdersScreen() {
   const router = useRouter()
-  const { orders, isLoading, fetchOrders, startPicking, finishOrder, cancelOrder } = useOrders()
+  const { orders, isLoading, fetchOrders, startPicking, finishOrder, cancelOrder, loadMore, hasMore } = useOrders()
   const { formatCurrency } = useFormatter()
   const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
   
@@ -96,7 +96,7 @@ export default function OrdersScreen() {
     }
 
     try {
-      const items = orderRepository.getOrderItems(order.id)
+      const items = orderRepository.getOrderItems(activeCompanyId!, order.id)
       const receipt = printService.formatThermalReceipt(order, items, company)
       
       // Simulate physical print
@@ -254,6 +254,15 @@ export default function OrdersScreen() {
         renderItem={renderOrder}
         keyExtractor={item => item.id}
         contentContainerClassName="px-6 pb-24"
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          hasMore && orders.length > 0 ? (
+            <View className="py-4 items-center">
+              <ActivityIndicator size="small" color="#4f46e5" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           isLoading ? <Loading /> : (
             <EmptyState 
@@ -263,7 +272,7 @@ export default function OrdersScreen() {
             />
           )
         }
-        onRefresh={fetchOrders}
+        onRefresh={() => fetchOrders(true)}
         refreshing={isLoading}
       />
     </Screen>

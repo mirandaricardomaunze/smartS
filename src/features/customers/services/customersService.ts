@@ -6,10 +6,10 @@ import { useCompanyStore } from '@/store/companyStore'
 import { Customer } from '@/types'
 
 export const customersService = {
-  getAll(): Customer[] {
+  getAll(limit: number = 20, offset: number = 0): Customer[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
-    return customerRepository.getAll(activeCompanyId)
+    return customerRepository.getAll(activeCompanyId, limit, offset)
   },
 
   create(data: Omit<Customer, 'id' | 'created_at' | 'synced'>): Customer {
@@ -30,8 +30,8 @@ export const customersService = {
       throw new Error('Sem permissão para editar clientes')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    customerRepository.update(id, data)
     if (activeCompanyId) {
+      customerRepository.update(activeCompanyId, id, data)
       historyRepository.log(activeCompanyId, 'UPDATE', 'customers', id, user.id, data)
     }
   },
@@ -42,8 +42,8 @@ export const customersService = {
       throw new Error('Sem permissão para apagar clientes')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    customerRepository.delete(id)
     if (activeCompanyId) {
+      customerRepository.delete(activeCompanyId, id)
       historyRepository.log(activeCompanyId, 'DELETE', 'customers', id, user.id, { id })
     }
   }

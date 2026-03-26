@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import * as SplashScreen from 'expo-splash-screen'
 import ToastContainer from '@/components/ui/ToastContainer'
+import { notificationService } from '@/features/notifications/services/notificationService'
 import { 
   useFonts,
   Inter_400Regular,
@@ -27,8 +28,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync()
 
+import { useAutoAlerts } from '@/features/notifications/hooks/useAutoAlerts'
+
 function RootLayoutNav() {
   const { colorScheme } = useColorScheme()
+  useAutoAlerts()
 
   return (
     <Stack 
@@ -47,6 +51,8 @@ export default function RootLayout() {
   const { isLoading } = useAuthStore()
   const { settings } = useSettingsStore()
   const { colorScheme, setColorScheme } = useColorScheme()
+  const router = useRouter()
+  
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
     'Inter-SemiBold': Inter_600SemiBold,
@@ -84,11 +90,19 @@ export default function RootLayout() {
         await runMigrations()
         initializeNetworkListener()
         await authService.initializeSession()
+        await notificationService.requestPermissions()
       } catch (e) {
         console.error('App setup failed', e)
       }
     }
     setupApp()
+    
+    // Subscribe to password recovery and other auth events
+    const unsubscribe = authService.subscribeToAuthChanges(() => {
+      router.push('/(auth)/reset-password')
+    })
+    
+    return () => unsubscribe()
   }, [])
 
   if (isLoading || !fontsLoaded) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native'
-import { X, User, Mail, Save } from 'lucide-react-native'
+import { X, User, Mail, Save, Lock, Shield } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { User as UserType } from '@/types'
@@ -26,6 +26,7 @@ export default function ProfileFormModal({
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    newPassword: '',
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -35,6 +36,7 @@ export default function ProfileFormModal({
       setFormData({
         name: initialData.name,
         email: initialData.email,
+        newPassword: '',
       })
     }
   }, [visible, initialData])
@@ -51,6 +53,7 @@ export default function ProfileFormModal({
       await onSave({
         name: formData.name,
         email: formData.email,
+        ...(formData.newPassword ? { password: formData.newPassword } : {})
       })
       feedback.success()
       showToast('Perfil atualizado com sucesso', 'success')
@@ -108,6 +111,24 @@ export default function ProfileFormModal({
                 keyboardType="email-address"
                 icon={<Mail size={18} color="#94a3b8" />}
               />
+            </View>
+
+            <View className="mt-4 mb-4">
+               <View className="flex-row items-center mb-4">
+                  <Shield size={16} color="#4f46e5" className="mr-2" />
+                  <Text style={{ fontFamily: 'Inter-Bold' }} className="text-xs font-black text-slate-400 uppercase tracking-widest">Segurança da Conta</Text>
+               </View>
+               <Input
+                  label="Nova Palavra-passe"
+                  placeholder="Deixe em branco para manter"
+                  value={formData.newPassword}
+                  onChangeText={(v) => setFormData(prev => ({ ...prev, newPassword: v }))}
+                  secureTextEntry
+                  icon={<Lock size={18} color="#94a3b8" />}
+               />
+               <Text className="text-[10px] text-slate-500 mt-2 ml-1">
+                 Se alterar o e-mail ou a senha, poderá ser necessário confirmar a alteração no seu e-mail.
+               </Text>
             </View>
 
             <View className="h-10" />

@@ -3,8 +3,14 @@ import { productsRepository } from '@/repositories/productsRepository'
 import { movementsRepository } from '@/repositories/movementsRepository'
 import { invoiceRepository } from '@/repositories/invoiceRepository'
 import { Order, OrderItem, Invoice, NoteType } from '@/types'
+import { useCompanyStore } from '@/store/companyStore'
 
 export const orderService = {
+  getAll(limit: number = 20, offset: number = 0): Order[] {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+    return orderRepository.getAll(activeCompanyId, limit, offset)
+  },
   /**
    * Creates a new order and automatically handles inventory and invoicing
    */
@@ -40,17 +46,17 @@ export const orderService = {
   /**
    * Starts the picking process and locks the stock
    */
-  startPicking: async (orderId: string) => {
-    const order = orderRepository.getById(orderId)
+  startPicking: async (companyId: string, orderId: string) => {
+    const order = orderRepository.getById(companyId, orderId)
     if (!order || order.status !== 'pending') return
 
-    const items = orderRepository.getOrderItems(orderId)
+    const items = orderRepository.getOrderItems(companyId, orderId)
 
     // Lock stock (deduct it from inventory)
     // The movementsRepository.create already handles product stock updates.
     for (const item of items) {
       await movementsRepository.create({
-        company_id: order.company_id,
+        company_id: companyId,
         product_id: item.product_id,
         type: 'exit',
         quantity: item.quantity,
@@ -60,46 +66,46 @@ export const orderService = {
     }
 
     // Update status to 'picking'
-    orderRepository.updateStatus(orderId, 'picking')
+    orderRepository.updateStatus(companyId, orderId, 'picking')
   },
 
   /**
    * Finalizes the order
    */
-  finishOrder: async (orderId: string) => {
-    const order = orderRepository.getById(orderId)
+  finishOrder: async (companyId: string, orderId: string) => {
+    const order = orderRepository.getById(companyId, orderId)
     if (!order || (order.status !== 'picking' && order.status !== 'pending')) return
 
     // If it was still pending, lock stock first
     if (order.status === 'pending') {
-      await orderService.startPicking(orderId)
+      await orderService.startPicking(companyId, orderId)
     }
 
     // Update status to 'completed'
-    orderRepository.updateStatus(orderId, 'completed')
+    orderRepository.updateStatus(companyId, orderId, 'completed')
 
     // Update invoice status to issued
-    const invoice = invoiceRepository.getByOrderId(orderId)
+    const invoice = invoiceRepository.getByOrderId(companyId, orderId)
     if (invoice) {
-        await invoiceRepository.updateStatus(invoice.id, 'issued')
+        await invoiceRepository.updateStatus(companyId, invoice.id, 'issued')
     }
   },
 
   /**
    * Cancels an order and restores stock
    */
-  cancelOrder: async (orderId: string, userId: string) => {
-    const order = orderRepository.getById(orderId)
+  cancelOrder: async (companyId: string, orderId: string, userId: string) => {
+    const order = orderRepository.getById(companyId, orderId)
     if (!order || order.status === 'cancelled') return
 
-    const items = orderRepository.getOrderItems(orderId)
+    const items = orderRepository.getOrderItems(companyId, orderId)
 
     // 1. Restore stock ONLY if it was subtracted (picking or completed)
     // The movementsRepository.create already handles product stock updates.
     if (order.status === 'picking' || order.status === 'completed') {
       for (const item of items) {
         await movementsRepository.create({
-          company_id: order.company_id,
+          company_id: companyId,
           product_id: item.product_id,
           type: 'entry',
           quantity: item.quantity,
@@ -110,12 +116,12 @@ export const orderService = {
     }
 
     // 2. Update order status
-    await orderRepository.updateStatus(orderId, 'cancelled')
+    await orderRepository.updateStatus(companyId, orderId, 'cancelled')
     
     // 3. Update invoice status if exists
-    const invoice = invoiceRepository.getByOrderId(orderId)
+    const invoice = invoiceRepository.getByOrderId(companyId, orderId)
     if (invoice) {
-      await invoiceRepository.updateStatus(invoice.id, 'cancelled')
+      await invoiceRepository.updateStatus(companyId, invoice.id, 'cancelled')
     }
   },
 

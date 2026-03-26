@@ -1,11 +1,33 @@
+import * as Notifications from 'expo-notifications'
 import { db } from '@/database/sqlite'
 import { Notification, NotificationType } from '../types'
 import { generateUUID } from '@/utils/uuid'
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 export const notificationService = {
-  async getAll(): Promise<Notification[]> {
+  async requestPermissions() {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    return finalStatus === 'granted';
+  },
+
+  async getAll(companyId: string): Promise<Notification[]> {
     return db.getAllSync<Notification>(
-      'SELECT * FROM notifications ORDER BY created_at DESC'
+      'SELECT * FROM notifications WHERE company_id = ? ORDER BY created_at DESC',
+      [companyId]
     )
   },
 
@@ -20,13 +42,13 @@ export const notificationService = {
     db.runSync('UPDATE notifications SET is_read = 1')
   },
 
-  async create(data: Omit<Notification, 'id' | 'created_at' | 'is_read'>): Promise<Notification> {
+  async create(data: Omit<Notification, 'id' | 'created_at' | 'is_read'> & { company_id: string }): Promise<Notification> {
     const id = generateUUID()
     const createdAt = new Date().toISOString()
     
     db.runSync(
-      'INSERT INTO notifications (id, title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, 0, ?)',
-      [id, data.title, data.message, data.type, createdAt]
+      'INSERT INTO notifications (id, company_id, title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+      [id, data.company_id, data.title, data.message, data.type, createdAt]
     )
 
     return {
@@ -41,9 +63,10 @@ export const notificationService = {
    * Automatically check for low stock and generate notifications.
    * This should be called on app start or dashboard load.
    */
-  async checkLowStockAlerts(): Promise<void> {
+  async checkLowStockAlerts(companyId: string): Promise<void> {
     const lowStockProducts = db.getAllSync<any>(
-      'SELECT name, current_stock, minimum_stock FROM products WHERE is_active = 1 AND current_stock <= minimum_stock'
+      'SELECT name, current_stock, minimum_stock FROM products WHERE company_id = ? AND is_active = 1 AND current_stock <= minimum_stock',
+      [companyId]
     )
 
     for (const product of lowStockProducts) {
@@ -58,6 +81,7 @@ export const notificationService = {
 
       if (!existing) {
         await this.create({
+          company_id: companyId,
           title,
           message,
           type: 'warning'
@@ -69,9 +93,10 @@ export const notificationService = {
   /**
    * Check for new pending orders and generate notifications
    */
-  async checkNewOrders(): Promise<void> {
+  async checkNewOrders(companyId: string): Promise<void> {
     const pendingOrders = db.getAllSync<any>(
-      "SELECT number, customer_name FROM orders WHERE status = 'pending' AND created_at >= datetime('now', '-1 hour')"
+      "SELECT number, customer_name FROM orders WHERE company_id = ? AND status = 'pending' AND created_at >= datetime('now', '-1 hour')",
+      [companyId]
     )
 
     for (const order of pendingOrders) {
@@ -85,6 +110,7 @@ export const notificationService = {
 
       if (!existing) {
         await this.create({
+          company_id: companyId,
           title,
           message,
           type: 'info'
@@ -96,9 +122,10 @@ export const notificationService = {
   /**
    * Check for products expiring within the next 30 days
    */
-  async checkExpiryAlerts(): Promise<void> {
+  async checkExpiryAlerts(companyId: string): Promise<void> {
     const productsNearExpiry = db.getAllSync<any>(
-      "SELECT name, expiry_date FROM products WHERE is_active = 1 AND expiry_date IS NOT NULL AND expiry_date <= date('now', '+30 days') AND expiry_date >= date('now')"
+      "SELECT name, expiry_date FROM products WHERE company_id = ? AND is_active = 1 AND expiry_date IS NOT NULL AND expiry_date <= date('now', '+30 days') AND expiry_date >= date('now')",
+      [companyId]
     )
 
     for (const product of productsNearExpiry) {
@@ -113,11 +140,49 @@ export const notificationService = {
 
       if (!existing) {
         await this.create({
+          company_id: companyId,
           title,
           message,
           type: 'warning'
         })
+
+        // Also trigger a system-level notification
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `⚠️ ${title}`,
+            body: message,
+            data: { screen: 'expiry' },
+          },
+          trigger: null,
+        });
       }
     }
+  },
+
+  async scheduleNotification(title: string, body: string, data: any = {}) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+      },
+      trigger: null,
+    });
+  },
+
+  async sendLowStockAlert(productName: string, currentStock: number) {
+    await this.scheduleNotification(
+      '⚠️ Stock Crítico!',
+      `O produto "${productName}" tem apenas ${currentStock} unidades restantes. Reponha o quanto antes!`,
+      { screen: 'products' }
+    );
+  },
+
+  async sendInsightNotification(title: string, message: string) {
+    await this.scheduleNotification(
+      `💡 Smart Insight: ${title}`,
+      message,
+      { screen: 'dashboard' }
+    );
   }
 }

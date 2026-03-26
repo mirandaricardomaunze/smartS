@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native'
+import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, useColorScheme } from 'react-native'
 import { Link, useRouter } from 'expo-router'
 import { useUsers } from '@/features/users/hooks/useUsers'
 import Input from '@/components/ui/Input'
@@ -22,6 +22,9 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('')
   const [company, setCompany] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   const handleRegister = async () => {
     feedback.medium()
@@ -61,7 +64,7 @@ export default function RegisterScreen() {
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <StatusBar translucent backgroundColor='transparent' style='light' />
       <LinearGradient
-        colors={['#4f46e5', '#6366f1', '#a855f7']}
+        colors={isDark ? ['#0f172a', '#1e1b4b'] : ['#4f46e5', '#6366f1', '#a855f7']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}

@@ -3,6 +3,7 @@ import { historyRepository } from '@/repositories/historyRepository'
 import { hasPermission } from '@/utils/permissions'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { Note, NoteItem } from '@/types'
+import { useCompanyStore } from '@/store/companyStore'
 
 export const notesService = {
   getAll(): Note[] {
@@ -10,10 +11,14 @@ export const notesService = {
     if (!user || (!hasPermission(user.role, 'view_history') && !hasPermission(user.role, 'create_notes'))) {
         throw new Error('Sem permissão para ver guias')
     }
-    return notesRepository.getAll()
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+    return notesRepository.getAll(activeCompanyId)
   },
   getById(id: string): Note | null {
-    return notesRepository.getById(id)
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return null
+    return notesRepository.getById(activeCompanyId, id)
   },
   create(data: { type: string, number: string, items: NoteItem[] }): Note {
     const { user } = useAuthStore.getState()

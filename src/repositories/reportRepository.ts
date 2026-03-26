@@ -8,6 +8,7 @@ export interface InventoryReportData {
   items: Array<{
     name: string
     sku: string
+    reference: string
     category: string
     current_stock: number
     minimum_stock: number
@@ -29,21 +30,24 @@ export interface MovementReportData {
 }
 
 export const reportRepository = {
-  getInventoryData(): InventoryReportData {
+  getInventoryData(companyId: string): InventoryReportData {
     const items = db.getAllSync<any>(
-      `SELECT p.name, p.sku, c.name as category, p.current_stock, p.minimum_stock 
+      `SELECT p.name, p.sku, p.reference, c.name as category, p.current_stock, p.minimum_stock 
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id 
-       WHERE p.is_active = 1 
-       ORDER BY p.name ASC`
+       WHERE p.company_id = ? AND p.is_active = 1 
+       ORDER BY p.name ASC`,
+      [companyId]
     )
 
     const categories = db.getAllSync<{ category: string }>(
-      'SELECT DISTINCT name as category FROM categories'
+      'SELECT DISTINCT name as category FROM categories WHERE company_id = ?',
+      [companyId]
     )
 
     const stats = db.getFirstSync<any>(
-      'SELECT COUNT(*) as total_products, SUM(current_stock) as total_stock, SUM(CASE WHEN current_stock <= minimum_stock THEN 1 ELSE 0 END) as low_stock_count FROM products WHERE is_active = 1'
+      'SELECT COUNT(*) as total_products, SUM(current_stock) as total_stock, SUM(CASE WHEN current_stock <= minimum_stock THEN 1 ELSE 0 END) as low_stock_count FROM products WHERE is_active = 1 AND company_id = ?',
+      [companyId]
     )
 
     return {
@@ -55,34 +59,34 @@ export const reportRepository = {
     }
   },
 
-  getMovementsData(days: number = 30): MovementReportData {
+  getMovementsData(companyId: string, days: number = 30): MovementReportData {
     const stats = db.getFirstSync<any>(
       `SELECT 
         SUM(CASE WHEN type = 'entry' THEN quantity ELSE 0 END) as total_entries,
         SUM(CASE WHEN type = 'exit' THEN quantity ELSE 0 END) as total_exits
        FROM movements 
-       WHERE created_at >= date('now', '-' || ? || ' days')`,
-      [days]
+       WHERE company_id = ? AND created_at >= date('now', '-' || ? || ' days')`,
+      [companyId, days]
     )
 
     const topMoved = db.getAllSync<any>(
       `SELECT p.name, SUM(m.quantity) as total_qty
        FROM movements m
        JOIN products p ON m.product_id = p.id
-       WHERE m.created_at >= date('now', '-' || ? || ' days')
+       WHERE m.company_id = ? AND m.created_at >= date('now', '-' || ? || ' days')
        GROUP BY m.product_id
        ORDER BY total_qty DESC
        LIMIT 5`,
-      [days]
+      [companyId, days]
     )
 
     const byDay = db.getAllSync<any>(
       `SELECT date(created_at) as date, COUNT(*) as count
        FROM movements
-       WHERE created_at >= date('now', '-' || ? || ' days')
+       WHERE company_id = ? AND created_at >= date('now', '-' || ? || ' days')
        GROUP BY date(created_at)
        ORDER BY date ASC`,
-      [days]
+      [companyId, days]
     )
 
     return {
@@ -94,13 +98,14 @@ export const reportRepository = {
     }
   },
 
-  getExpiryData(): any[] {
+  getExpiryData(companyId: string): any[] {
     return db.getAllSync<any>(
-      `SELECT p.name, e.lot_number, e.expiry_date, e.quantity
+      `SELECT p.name, p.reference, e.lot_number, e.expiry_date, e.quantity
        FROM expiry_lots e
        JOIN products p ON e.product_id = p.id
-       WHERE e.expiry_date <= date('now', '+90 days')
-       ORDER BY e.expiry_date ASC`
+       WHERE e.company_id = ? AND e.expiry_date <= date('now', '+90 days')
+       ORDER BY e.expiry_date ASC`,
+      [companyId]
     )
   },
 

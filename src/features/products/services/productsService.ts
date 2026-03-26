@@ -6,13 +6,15 @@ import { useCompanyStore } from '@/store/companyStore'
 import { Product } from '@/types'
 
 export const productsService = {
-  getAll(): Product[] {
+  getAll(limit: number = 20, offset: number = 0): Product[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
-    return productsRepository.getAll(activeCompanyId)
+    return productsRepository.getAll(activeCompanyId, limit, offset)
   },
   getById(id: string): Product | null {
-    return productsRepository.getById(id)
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return null
+    return productsRepository.getById(activeCompanyId, id)
   },
   getByBarcode(barcode: string): Product | null {
     const { activeCompanyId } = useCompanyStore.getState()
@@ -53,8 +55,8 @@ export const productsService = {
     const { activeCompanyId } = useCompanyStore.getState()
     
     // Check if stock is being updated manually to record a movement
-    if (data.current_stock !== undefined) {
-      const currentProduct = productsRepository.getById(id)
+    if (data.current_stock !== undefined && activeCompanyId) {
+      const currentProduct = productsRepository.getById(activeCompanyId, id)
       if (currentProduct && currentProduct.current_stock !== data.current_stock) {
         const diff = data.current_stock - currentProduct.current_stock
         const { movementsRepository } = require('@/repositories/movementsRepository')
@@ -69,8 +71,8 @@ export const productsService = {
       }
     }
 
-    productsRepository.update(id, data)
     if (activeCompanyId) {
+      productsRepository.update(id, activeCompanyId, data)
       historyRepository.log(activeCompanyId, 'UPDATE', 'products', id, user.id, data)
     }
   },
@@ -80,8 +82,8 @@ export const productsService = {
       throw new Error('Sem permissão para apagar produtos')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    productsRepository.delete(id)
     if (activeCompanyId) {
+      productsRepository.delete(activeCompanyId, id)
       historyRepository.log(activeCompanyId, 'DELETE', 'products', id, user.id, { id })
     }
   },

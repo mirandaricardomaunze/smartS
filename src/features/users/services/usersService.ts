@@ -12,18 +12,21 @@ export const usersService = {
     if (!user || !hasPermission(user.role, 'manage_users')) {
         throw new Error('Sem permissão para gerir utilizadores')
     }
-    return usersRepository.getAll()
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+    return usersRepository.getAll(activeCompanyId)
   },
   async create(data: Omit<User, 'id' | 'created_at' | 'updated_at' | 'synced'>, password?: string): Promise<User> {
     const { user } = useAuthStore.getState()
-    const allUsers = usersRepository.getAll()
+    const { activeCompanyId } = useCompanyStore.getState()
+    const allUsers = activeCompanyId ? usersRepository.getAll(activeCompanyId) : []
     const isFirstUser = allUsers.length === 0
     
     if (!isFirstUser && (!user || !hasPermission(user.role, 'manage_users'))) {
       throw new Error('Sem permissão para criar utilizadores')
     }
     
-    if (usersRepository.getByEmail(data.email)) {
+    if (activeCompanyId && usersRepository.getByEmail(activeCompanyId, data.email)) {
         throw new Error('Email já em uso')
     }
 
@@ -54,8 +57,8 @@ export const usersService = {
       throw new Error('Sem permissão para editar utilizador')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    usersRepository.update(id, data)
     if (activeCompanyId) {
+      usersRepository.update(activeCompanyId, id, data)
       historyRepository.log(activeCompanyId, 'UPDATE', 'users', id, user.id, data)
     }
   },
@@ -68,8 +71,8 @@ export const usersService = {
         throw new Error('Não pode apagar o seu próprio utilizador')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    usersRepository.delete(id)
     if (activeCompanyId) {
+      usersRepository.delete(activeCompanyId, id)
       historyRepository.log(activeCompanyId, 'DELETE', 'users', id, user.id, { id })
     }
   },

@@ -19,6 +19,15 @@ export interface StockForecast {
   risk_level: 'critical' | 'warning' | 'stable'
 }
 
+export interface ProfitabilityAnalysis {
+  id: string
+  name: string
+  total_sold: number
+  unit_profit: number
+  total_profit: number
+  margin_percentage: number
+}
+
 export const intelligenceService = {
   /**
    * Performs ABC Analysis based on total sales value in the last 30 days
@@ -106,5 +115,66 @@ export const intelligenceService = {
       }
     }).filter(f => f.days_remaining <= 30) // Only show relevant risks
       .sort((a, b) => a.days_remaining - b.days_remaining)
+  },
+
+  /**
+   * Identifies products with the highest net profit in the last 30 days
+   */
+  getProfitabilityAnalysis(): ProfitabilityAnalysis[] {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+
+    const query = `
+      SELECT 
+        p.id, 
+        p.name, 
+        p.purchase_price,
+        p.sale_price,
+        SUM(oi.quantity) as total_sold
+      FROM products p
+      JOIN order_items oi ON p.id = oi.product_id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.company_id = ? 
+        AND o.status = 'completed'
+        AND o.created_at >= date('now', '-30 days')
+      GROUP BY p.id
+      ORDER BY (p.sale_price - p.purchase_price) * SUM(oi.quantity) DESC
+      LIMIT 10
+    `
+
+    const rawData = db.getAllSync<any>(query, [activeCompanyId])
+
+    return rawData.map(item => {
+      const unitProfit = (item.sale_price || 0) - (item.purchase_price || 0)
+      const totalProfit = unitProfit * item.total_sold
+      const marginPercentage = item.sale_price > 0 ? (unitProfit / item.sale_price) * 100 : 0
+
+      return {
+        id: item.id,
+        name: item.name,
+        total_sold: item.total_sold,
+        unit_profit: unitProfit,
+        total_profit: totalProfit,
+        margin_percentage: marginPercentage
+      }
+    })
+  },
+
+  /**
+   * Returns items that are strictly below their minimum_stock
+   */
+  getCriticalStockItems(): any[] {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+
+    return db.getAllSync<any>(
+      `SELECT name, current_stock, minimum_stock 
+       FROM products 
+       WHERE company_id = ? 
+         AND is_active = 1 
+         AND current_stock <= minimum_stock 
+         AND current_stock > 0`, 
+      [activeCompanyId]
+    )
   }
 }

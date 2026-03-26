@@ -18,6 +18,7 @@ export default function ProductSelector() {
     return products.filter((p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.barcode?.includes(searchQuery) ||
+      (p.reference && p.reference.toLowerCase().includes(searchQuery.toLowerCase())) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [products, searchQuery])
@@ -43,9 +44,16 @@ export default function ProductSelector() {
           <Text className="text-sm font-bold text-slate-900 dark:text-white mb-1" numberOfLines={1}>
             {item.name}
           </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            SKU: {item.sku}
-          </Text>
+          <View className="flex-row items-center mb-2">
+            <Text className="text-[10px] text-slate-500 dark:text-slate-400 mr-2">
+              SKU: {item.sku}
+            </Text>
+            {item.reference && (
+              <View className="bg-primary/10 px-1 rounded">
+                <Text className="text-[8px] font-bold text-primary">REF: {item.reference}</Text>
+              </View>
+            )}
+          </View>
           <View className="flex-row items-center justify-between">
             <Text className="text-primary font-bold">
               {formatCurrency(item.sale_price || 0)}
@@ -63,7 +71,7 @@ export default function ProductSelector() {
 
   return (
     <View className="flex-1 px-4 pt-6">
-      <View className="flex-row items-center mb-4">
+      <View className="flex-row items-start mb-4">
         <View className="flex-1">
           <Input
             placeholder="Procurar produto..."

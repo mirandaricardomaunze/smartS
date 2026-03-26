@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native'
+import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, useColorScheme } from 'react-native'
 import { Link } from 'expo-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import Input from '@/components/ui/Input'
@@ -19,6 +19,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+  
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   const handleLogin = async () => {
     feedback.medium()
@@ -42,7 +45,7 @@ export default function LoginScreen() {
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <StatusBar translucent backgroundColor='transparent' style='light' />
       <LinearGradient
-        colors={['#4f46e5', '#6366f1', '#a855f7']}
+        colors={isDark ? ['#0f172a', '#1e1b4b'] : ['#4f46e5', '#6366f1', '#a855f7']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -108,6 +111,12 @@ export default function LoginScreen() {
                    placeholderTextColor="rgba(255,255,255,0.4)"
                    containerStyle={{ backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.2)' }}
                 />
+
+                <Link href="/(auth)/forgot-password" asChild>
+                  <TouchableOpacity className="items-end -mt-2">
+                    <Text style={{ fontFamily: 'Inter-Medium' }} className="text-white/70 text-xs font-semibold underline">Esqueceu a senha?</Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
 
               <Button 

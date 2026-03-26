@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
 import { useToastStore } from '@/store/useToastStore'
 import { useCustomers } from '@/features/customers/hooks/useCustomers'
 import Screen from '@/components/layout/Screen'
@@ -9,14 +9,16 @@ import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Loading from '@/components/ui/Loading'
 import CustomerFormModal from '@/features/customers/components/CustomerFormModal'
-import { Plus, User, Phone, Mail, Search, Trash2, Edit2, BarChart2 } from 'lucide-react-native'
+import { Plus, User, Phone, Mail, Search, Trash2, Edit2, BarChart2, AlertCircle, Wallet } from 'lucide-react-native'
+import { useFormatter } from '@/hooks/useFormatter'
 import Input from '@/components/ui/Input'
 import { feedback } from '@/utils/haptics'
 import { Customer } from '@/types'
 import CustomerStatsModal from '@/features/customers/components/CustomerStatsModal'
 
 export default function CustomersScreen() {
-  const { customers, isLoading, fetchCustomers, createCustomer, updateCustomer, deleteCustomer } = useCustomers()
+  const { formatCurrency } = useFormatter()
+  const { customers, isLoading, fetchCustomers, createCustomer, updateCustomer, deleteCustomer, loadMore, hasMore } = useCustomers()
   const [search, setSearch] = useState('')
   const [modalVisible, setModalVisible] = useState(false)
   const [statsVisible, setStatsVisible] = useState(false)
@@ -80,6 +82,14 @@ export default function CustomersScreen() {
             <Mail size={12} color="#94a3b8" />
             <Text className="text-xs text-slate-500 ml-1" numberOfLines={1}>{item.email || 'Sem email'}</Text>
           </View>
+          {item.total_debt && item.total_debt > 0 ? (
+            <View className="flex-row items-center mt-2 bg-rose-50 dark:bg-rose-900/10 self-start px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-900/20">
+              <AlertCircle size={10} color="#ef4444" />
+              <Text className="text-[10px] text-rose-600 dark:text-rose-400 font-bold ml-1">
+                Dívida: {formatCurrency(item.total_debt)}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       <View className="flex-row items-center">
@@ -89,9 +99,13 @@ export default function CustomersScreen() {
               setSelectedCustomer(item)
               setStatsVisible(true)
             }}
-            className="p-2 w-10 h-10 bg-indigo-50 dark:bg-indigo-900/10 rounded-full items-center justify-center mr-2"
+            className={`p-2 w-10 h-10 ${item.total_debt && item.total_debt > 0 ? 'bg-rose-500 shadow-md shadow-rose-500/20' : 'bg-indigo-50 dark:bg-indigo-900/10'} rounded-full items-center justify-center mr-2`}
         >
-          <BarChart2 size={18} color="#4f46e5" />
+          {item.total_debt && item.total_debt > 0 ? (
+            <Wallet size={18} color="#ffffff" />
+          ) : (
+            <BarChart2 size={18} color="#4f46e5" />
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -128,7 +142,7 @@ export default function CustomersScreen() {
         }
       />
 
-      <View className="px-6 mb-4">
+      <View className="px-6 mt-6 mb-4">
         <Input
           placeholder="Pesquisar clientes..."
           value={search}
@@ -143,10 +157,19 @@ export default function CustomersScreen() {
         renderItem={renderCustomer}
         keyExtractor={item => item.id}
         contentContainerClassName="px-6 pb-20"
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          hasMore && customers.length > 0 ? (
+            <View className="py-4 items-center">
+              <ActivityIndicator size="small" color="#4f46e5" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           isLoading ? <Loading /> : <EmptyState title="Nenhum cliente" description="Começa por adicionar os teus clientes de confiança." icon={<User size={48} color="#cbd5e1" />} />
         }
-        onRefresh={fetchCustomers}
+        onRefresh={() => fetchCustomers(true)}
         refreshing={isLoading}
       />
 

@@ -32,8 +32,8 @@ export const suppliersService = {
       throw new Error('Sem permissão para editar fornecedores')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    supplierRepository.update(id, data)
     if (activeCompanyId) {
+      supplierRepository.update(activeCompanyId, id, data)
       historyRepository.log(activeCompanyId, 'UPDATE', 'suppliers', id, user.id, data)
     }
   },
@@ -44,8 +44,8 @@ export const suppliersService = {
       throw new Error('Sem permissão para apagar fornecedores')
     }
     const { activeCompanyId } = useCompanyStore.getState()
-    supplierRepository.delete(id)
     if (activeCompanyId) {
+      supplierRepository.delete(activeCompanyId, id)
       historyRepository.log(activeCompanyId, 'DELETE', 'suppliers', id, user.id, { id })
     }
   }

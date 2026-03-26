@@ -62,6 +62,7 @@ export default function CreateOrderScreen() {
       setItems([...items, {
         product_id: product.id,
         name: product.name,
+        reference: product.reference,
         quantity: 1,
         unit_price: product.sale_price,
         tax_rate: product.tax_rate,
@@ -164,7 +165,12 @@ export default function CreateOrderScreen() {
               <Card key={index} className="mb-2 p-3 flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text style={{ fontFamily: 'Inter-SemiBold' }} className="text-slate-800 dark:text-white font-semibold">{item.name}</Text>
-                  <Text className="text-xs text-slate-500">{item.quantity}x {formatCurrency(item.unit_price)}</Text>
+                  <View className="flex-row items-center">
+                    {item.reference && (
+                      <Text className="text-[10px] font-bold text-primary mr-2 uppercase">REF: {item.reference}</Text>
+                    )}
+                    <Text className="text-xs text-slate-500">{item.quantity}x {formatCurrency(item.unit_price)}</Text>
+                  </View>
                 </View>
                 <View className="flex-row items-center">
                   <Text style={{ fontFamily: 'Inter-Bold' }} className="text-slate-800 dark:text-white font-bold mr-3">{formatCurrency(item.total)}</Text>

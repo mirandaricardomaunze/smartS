@@ -25,7 +25,8 @@ export const printService = {
     
     items.forEach(item => {
       const name = (item as any).name || 'Produto'
-      const line = `${name.substring(0, 10).padEnd(12)} ${item.quantity.toString().padEnd(8)} ${item.total.toFixed(2)}\n`
+      const ref = (item as any).reference ? `[${(item as any).reference}] ` : ''
+      const line = `${(ref + name).substring(0, 12).padEnd(14)} ${item.quantity.toString().padEnd(6)} ${item.total.toFixed(2)}\n`
       text += line
     })
     

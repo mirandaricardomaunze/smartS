@@ -48,9 +48,14 @@ export default function CartSummary({ onCheckout }: CartSummaryProps) {
               <Text className="font-bold text-slate-900 dark:text-white" numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text className="text-xs text-slate-500">
-                {formatCurrency(item.sale_price || 0)} / un
-              </Text>
+              <View className="flex-row items-center">
+                {item.reference && (
+                  <Text className="text-[10px] font-bold text-primary mr-2 uppercase">REF: {item.reference}</Text>
+                )}
+                <Text className="text-xs text-slate-500">
+                  {formatCurrency(item.sale_price || 0)} / un
+                </Text>
+              </View>
             </View>
             
             <View className="flex-row items-center bg-white dark:bg-slate-800 rounded-xl px-2 py-1 mx-2">

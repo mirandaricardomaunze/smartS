@@ -27,7 +27,7 @@ export const financialService = {
     })
 
     // 2. Update invoice status to 'paid'
-    await invoiceRepository.updateStatus(invoiceId, 'paid')
+    await invoiceRepository.updateStatus(company_id, invoiceId, 'paid')
 
     return transaction
   },

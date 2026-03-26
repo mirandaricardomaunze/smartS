@@ -47,5 +47,44 @@ export function useAuth() {
     }
   }, [user])
 
-  return { user, isStoreLoading, isLoading, error, login, logout, updateProfile }
+  const forgotPassword = useCallback(async (email: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await authService.forgotPassword(email)
+    } catch (e: any) {
+      setError(e.message || 'Erro ao solicitar recuperação')
+      throw e
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const resetPassword = useCallback(async (password: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await authService.updatePassword(password)
+    } catch (e: any) {
+      setError(e.message || 'Erro ao atualizar palavra-passe')
+      throw e
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const updateEmail = useCallback(async (email: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await authService.updateEmail(email)
+    } catch (e: any) {
+      setError(e.message || 'Erro ao atualizar e-mail')
+      throw e
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { user, isStoreLoading, isLoading, error, login, logout, updateProfile, forgotPassword, resetPassword, updateEmail }
 }

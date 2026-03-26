@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import { usePOSStore } from '../store/posStore'
 import { useFormatter } from '@/hooks/useFormatter'
 import { orderService } from '@/services/orderService'
+import { posService } from '../services/posService'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useRouter } from 'expo-router'
 import { printService } from '@/services/printService'
@@ -31,51 +32,22 @@ export default function PaymentModal({ isVisible, onClose }: PaymentModalProps) 
   const [currentAmount, setCurrentAmount] = useState('')
 
   const handleFinalize = async () => {
-    if (!user || !user.company_id) {
-       useToastStore.getState().show('Utilizador não autenticado ou sem empresa associada', 'error')
-       return
-    }
-
     setIsProcessing(true)
     try {
-      const orderData = {
-        company_id: user.company_id,
-        customer_id: selectedCustomer?.id || null,
-        customer_name: selectedCustomer?.name || 'Consumidor Final',
-        user_id: user.id,
-        number: `PDV-${Date.now().toString().slice(-6)}`,
-        status: 'completed' as const,
-        total_amount: getTotal(),
-        discount: 0,
-        tax_amount: 0,
-        notes: isSplit 
-          ? `Venda via PDV - Pago dividido: ${payments.map(p => `${formatCurrency(p.amount)} (${p.method})`).join(', ')}`
-          : `Venda via PDV - Pago por ${paymentMethod}`,
-      }
-
-      const items = cart.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.sale_price || 0,
-        tax_rate: item.tax_rate || 0,
-        total: item.total,
-      }))
-
-      await orderService.processPosSale(orderData, items)
+      const { order, items } = await posService.processCheckout(paymentMethod, isSplit, payments)
       
       if (shouldPrint) {
-        const company = companyRepository.getById(user.company_id)
+        const company = companyRepository.getById(user?.company_id!)
         if (company) {
-          const receiptText = printService.formatThermalReceipt(orderData as any, items as any, company)
+          const receiptText = printService.formatThermalReceipt(order as any, items as any, company)
           await Share.share({
             message: receiptText,
-            title: `Recibo #${orderData.number}`
+            title: `Recibo #${order.number}`
           })
         }
       }
       
       useToastStore.getState().show(`Venda realizada com sucesso!${shouldPrint ? '\nImprimindo talão...' : ''}`, 'success')
-      clearCart()
       onClose()
       router.push('/(app)/orders')
     } catch (error: any) {

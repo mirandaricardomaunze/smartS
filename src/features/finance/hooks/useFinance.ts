@@ -29,7 +29,11 @@ export function useFinance() {
   }, [activeCompanyId])
 
   const createTransaction = async (data: Omit<FinancialTransaction, 'id' | 'created_at' | 'synced'>) => {
-    const tx = financialRepository.create(data)
+    const finalData = { ...data }
+    if (!finalData.company_id && activeCompanyId) {
+      finalData.company_id = activeCompanyId
+    }
+    const tx = financialRepository.create(finalData)
     fetchFinance()
     return tx
   }

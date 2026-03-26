@@ -1,5 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, useColorScheme } from 'react-native'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { useBiometrics } from '@/hooks/useBiometrics'
+import BiometricLock from '@/components/ui/BiometricLock'
 import { useRouter } from 'expo-router'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
@@ -24,7 +26,9 @@ import {
   History as HistoryIcon,
   Tag,
   Package,
-  ClipboardList
+  ClipboardList,
+  ShoppingCart,
+  Settings
 } from 'lucide-react-native'
 import Card from '@/components/ui/Card'
 import Animated, { FadeInUp } from 'react-native-reanimated'
@@ -45,6 +49,23 @@ export default function ControlCenterScreen() {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const [searchQuery, setSearchQuery] = useState('')
+  const [isUnlocked, setIsUnlocked] = useState(false)
+  const { authenticateAsync, isSupported, isEnrolled } = useBiometrics()
+
+  useEffect(() => {
+    if (isSupported && isEnrolled && !isUnlocked) {
+       handleUnlock()
+    } else if (!isSupported || !isEnrolled) {
+       setIsUnlocked(true)
+    }
+  }, [isSupported, isEnrolled])
+
+  const handleUnlock = async () => {
+     const success = await authenticateAsync('Autenticação Biométrica Necessária')
+     if (success) {
+       setIsUnlocked(true)
+     }
+  }
 
   const modules: ModuleItem[] = useMemo(() => [
     {
@@ -52,7 +73,7 @@ export default function ControlCenterScreen() {
       title: 'Base de Clientes',
       subtitle: 'Gerir CRM e contactos',
       icon: <Users size={22} color="#10b981" />,
-      route: '/(app)/customers',
+      route: '/customers',
       category: 'Parceiros e CRM',
       color: 'emerald'
     },
@@ -61,7 +82,7 @@ export default function ControlCenterScreen() {
       title: 'Fornecedores',
       subtitle: 'Gestão de compras e SRM',
       icon: <Building2 size={22} color="#10b981" />,
-      route: '/(app)/suppliers',
+      route: '/suppliers',
       category: 'Parceiros e CRM',
       color: 'emerald'
     },
@@ -70,7 +91,7 @@ export default function ControlCenterScreen() {
       title: 'Scanner de Barcode',
       subtitle: 'Entrada rápida via câmara',
       icon: <ScanLine size={22} color="#4f46e5" />,
-      route: '/(app)/scanner/index' as any,
+      route: '/scanner',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -79,7 +100,7 @@ export default function ControlCenterScreen() {
       title: 'Movimentos de Stock',
       subtitle: 'Registo de entradas e saídas',
       icon: <ArrowLeftRight size={22} color="#4f46e5" />,
-      route: '/(app)/movements',
+      route: '/movements',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -88,7 +109,7 @@ export default function ControlCenterScreen() {
       title: 'Categorias',
       subtitle: 'Gerir famílias de produtos',
       icon: <Tag size={22} color="#4f46e5" />,
-      route: '/(app)/categories',
+      route: '/categories',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -97,7 +118,7 @@ export default function ControlCenterScreen() {
       title: 'Alertas de Validade',
       subtitle: 'Vencimentos e lotes',
       icon: <CalendarClock size={22} color="#4f46e5" />,
-      route: '/(app)/expiry',
+      route: '/expiry',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -106,7 +127,7 @@ export default function ControlCenterScreen() {
       title: 'Gestão de Inventário',
       subtitle: 'Lista de produtos e catálogo',
       icon: <Package size={22} color="#4f46e5" />,
-      route: '/(app)/products',
+      route: '/products',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -115,7 +136,7 @@ export default function ControlCenterScreen() {
       title: 'Inventário Físico',
       subtitle: 'Auditoria e ajuste de stock',
       icon: <ClipboardList size={22} color="#4f46e5" />,
-      route: '/(app)/inventory/audit',
+      route: '/inventory/audit',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -124,7 +145,7 @@ export default function ControlCenterScreen() {
       title: 'Fluxo de Caixa',
       subtitle: 'Resumo financeiro e caixa',
       icon: <TrendingUp size={22} color="#8b5cf6" />,
-      route: '/(app)/finance',
+      route: '/finance',
       category: 'Gestão Financeira',
       color: 'violet'
     },
@@ -133,7 +154,7 @@ export default function ControlCenterScreen() {
       title: 'Relatórios PDF',
       subtitle: 'Exportar listas e KPI',
       icon: <BarChart3 size={22} color="#0ea5e9" />,
-      route: '/(app)/reports',
+      route: '/reports',
       category: 'Dados e Análises',
       color: 'sky'
     },
@@ -142,16 +163,25 @@ export default function ControlCenterScreen() {
       title: 'Gestão de Equipa',
       subtitle: 'Permissões e acessos',
       icon: <Shield size={22} color="#f43f5e" />,
-      route: '/(app)/users',
+      route: '/users',
       category: 'Sistema e Segurança',
       color: 'red'
+    },
+    {
+      id: 'hr',
+      title: 'Recursos Humanos',
+      subtitle: 'Funcionários, salários e ponto',
+      icon: <Users size={22} color="#059669" />,
+      route: '/hr',
+      category: 'Capital Humano',
+      color: 'emerald'
     },
     {
       id: 'history',
       title: 'Histórico de Auditoria',
       subtitle: 'Log completo de ações',
       icon: <HistoryIcon size={22} color="#f43f5e" />,
-      route: '/(app)/history',
+      route: '/history',
       category: 'Sistema e Segurança',
       color: 'red'
     },
@@ -160,9 +190,27 @@ export default function ControlCenterScreen() {
       title: 'Backup e Nuvem',
       subtitle: 'Cópias e sincronização',
       icon: <Download size={22} color="#f43f5e" />,
-      route: '/(app)/backup',
+      route: '/backup',
       category: 'Sistema e Segurança',
       color: 'red'
+    },
+    {
+      id: 'orders',
+      title: 'Pedidos',
+      subtitle: 'Gestão de encomendas',
+      icon: <ShoppingCart size={22} color="#0ea5e9" />,
+      route: '/orders',
+      category: 'Operações de Stock',
+      color: 'sky'
+    },
+    {
+      id: 'settings',
+      title: 'Definições',
+      subtitle: 'Configurações do sistema',
+      icon: <Settings size={22} color="#64748b" />,
+      route: '/settings',
+      category: 'Sistema e Segurança',
+      color: 'slate'
     }
   ], [])
 
@@ -224,6 +272,10 @@ export default function ControlCenterScreen() {
           </Card>
         </TouchableOpacity>
     )
+  }
+
+  if (!isUnlocked) {
+     return <BiometricLock onRetry={handleUnlock} title="Painel de Controlo" />
   }
 
   return (

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Notification } from '../types'
 import { notificationService } from '../services/notificationService'
+import { useCompanyStore } from '@/store/companyStore'
 
 interface NotificationState {
   notifications: Notification[]
@@ -18,9 +19,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   isLoading: false,
 
   fetchNotifications: async () => {
+    const companyId = useCompanyStore.getState().activeCompanyId
+    if (!companyId) return
+
     set({ isLoading: true })
     try {
-      const notifications = await notificationService.getAll()
+      const notifications = await notificationService.getAll(companyId)
       const unreadCount = notifications.filter(n => n.is_read === 0).length
       set({ notifications, unreadCount, isLoading: false })
     } catch (error) {
@@ -55,8 +59,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   addNotification: async (data) => {
+    const companyId = useCompanyStore.getState().activeCompanyId
+    if (!companyId) return
+
     try {
-      const newNotification = await notificationService.create(data)
+      const newNotification = await notificationService.create({
+        ...data,
+        company_id: companyId
+      })
       const { notifications } = get()
       const updatedNotifications = [newNotification, ...notifications]
       const unreadCount = updatedNotifications.filter(n => n.is_read === 0).length

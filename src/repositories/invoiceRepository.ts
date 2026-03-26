@@ -11,8 +11,8 @@ export const invoiceRepository = {
     )
   },
 
-  getByOrderId: (orderId: string): Invoice | null => {
-    return db.getFirstSync<Invoice>('SELECT * FROM invoices WHERE order_id = ?', [orderId])
+  getByOrderId: (companyId: string, orderId: string): Invoice | null => {
+    return db.getFirstSync<Invoice>('SELECT * FROM invoices WHERE order_id = ? AND company_id = ?', [orderId, companyId])
   },
 
   create: (data: Omit<Invoice, 'id' | 'created_at' | 'synced'>): Invoice => {
@@ -31,10 +31,10 @@ export const invoiceRepository = {
     return invoice
   },
 
-  updateStatus: (id: string, status: Invoice['status']): void => {
-    db.runSync('UPDATE invoices SET status = ?, synced = 0 WHERE id = ?', [status, id])
+  updateStatus: (companyId: string, id: string, status: Invoice['status']): void => {
+    db.runSync('UPDATE invoices SET status = ?, synced = 0 WHERE id = ? AND company_id = ?', [status, id, companyId])
     
-    const updated = db.getFirstSync<Invoice>('SELECT * FROM invoices WHERE id = ?', [id])
+    const updated = db.getFirstSync<Invoice>('SELECT * FROM invoices WHERE id = ? AND company_id = ?', [id, companyId])
     if (updated) {
       syncRepository.addToQueue('invoices', 'UPDATE', updated)
     }

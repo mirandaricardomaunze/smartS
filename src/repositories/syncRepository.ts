@@ -12,9 +12,10 @@ export interface SyncQueueItem {
 }
 
 export const syncRepository = {
-  getPending(): SyncQueueItem[] {
+  getPending(companyId: string): SyncQueueItem[] {
     return db.getAllSync<SyncQueueItem>(
-      'SELECT id, table_name, action, data, synced, retry_count, last_error, created_at FROM sync_queue WHERE synced = 0 ORDER BY created_at ASC'
+      'SELECT id, table_name, action, data, synced, retry_count, last_error, created_at FROM sync_queue WHERE company_id = ? AND synced = 0 ORDER BY created_at ASC',
+      [companyId]
     )
   },
   getErrors(): SyncQueueItem[] {
@@ -40,9 +41,10 @@ export const syncRepository = {
     return { pending, errors }
   },
   addToQueue(tableName: string, action: string, data: any): void {
+    const companyId = data.company_id || null
     db.runSync(
-      'INSERT INTO sync_queue (table_name, action, data, synced, retry_count, last_error, created_at) VALUES (?, ?, ?, 0, 0, NULL, ?)',
-      [tableName, action, JSON.stringify(data), new Date().toISOString()]
+      'INSERT INTO sync_queue (company_id, table_name, action, data, synced, retry_count, last_error, created_at) VALUES (?, ?, ?, ?, 0, 0, NULL, ?)',
+      [companyId, tableName, action, JSON.stringify(data), new Date().toISOString()]
     )
   }
 }

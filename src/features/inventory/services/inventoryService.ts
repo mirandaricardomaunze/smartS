@@ -21,7 +21,7 @@ export const inventoryService = {
         throw new Error('Sem permissão para realizar auditoria de stock')
     }
 
-    const product = productsRepository.getById(productId)
+    const product = productsRepository.getById(companyId, productId)
     if (!product) throw new Error('Produto não encontrado')
 
     const diff = physicalQty - product.current_stock

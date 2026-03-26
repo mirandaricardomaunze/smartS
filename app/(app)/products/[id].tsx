@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, Alert, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, Alert, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useAuthStore } from '@/features/auth/store/authStore'
@@ -33,6 +33,9 @@ export default function ProductDetailScreen() {
   const { lots, isLoading: expiryLoading, createLot } = useExpiry(id)
   const { user } = useAuthStore()
   const { activeCompanyId } = useCompanyStore()
+  
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   const product = useMemo(() => products.find(p => p.id === id), [products, id])
   const [isDeleting, setIsDeleting] = useState(false)
@@ -136,7 +139,7 @@ export default function ProductDetailScreen() {
           <Card variant="default" className="items-center p-8 mb-8 mt-4">
             <View className="w-24 h-24 rounded-3xl overflow-hidden mb-6 shadow-sm shadow-black/20">
               <LinearGradient
-                colors={isLowStock ? ['#fecaca', '#ef4444'] : ['#eef2ff', '#4f46e5']}
+                colors={isLowStock ? (isDark ? ['#7f1d1d', '#991b1b'] : ['#fecaca', '#ef4444']) : (isDark ? ['#1e1b4b', '#3730a3'] : ['#eef2ff', '#4f46e5'])}
                 className="flex-1 items-center justify-center"
               >
                 <PackageOpen size={48} color="white" />
@@ -241,11 +244,16 @@ export default function ProductDetailScreen() {
           <Card variant="glass" glassIntensity={20} className="mb-8 p-4">
              <InfoRow 
                icon={<Tag size={18} color="#94a3b8" />} 
-               label="SKU / Ref" 
+               label="SKU" 
                value={product.sku} 
              />
              <InfoRow 
                icon={<Hash size={18} color="#94a3b8" />} 
+               label="Referência Interna" 
+               value={product.reference || '---'} 
+             />
+             <InfoRow 
+               icon={<Tag size={18} color="#94a3b8" />} 
                label="Código de Barras" 
                value={product.barcode} 
              />

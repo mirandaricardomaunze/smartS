@@ -353,6 +353,168 @@ export async function runMigrations() {
       query: `
         ALTER TABLE products ADD COLUMN expiry_date TEXT;
       `
+    },
+    {
+      name: '019_notifications_sync_tenancy',
+      query: `
+        ALTER TABLE notifications ADD COLUMN company_id TEXT;
+        ALTER TABLE sync_queue ADD COLUMN company_id TEXT;
+        CREATE INDEX IF NOT EXISTS idx_notifications_company ON notifications(company_id);
+      `
+    },
+    {
+      name: '020_hr_module',
+      query: `
+        CREATE TABLE IF NOT EXISTS departments (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS positions (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          department_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          base_salary REAL DEFAULT 0,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id),
+          FOREIGN KEY (department_id) REFERENCES departments(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS employees (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          position_id TEXT,
+          name TEXT NOT NULL,
+          bi_number TEXT,
+          nit TEXT,
+          address TEXT,
+          contacts TEXT, -- JSON string
+          photo_url TEXT,
+          employment_type TEXT DEFAULT 'permanent', -- 'permanent' | 'fixed-term' | 'probation'
+          status TEXT DEFAULT 'active', -- 'active' | 'suspended' | 'terminated'
+          contract_start_date TEXT,
+          contract_end_date TEXT,
+          emergency_contact TEXT, -- JSON string
+          bank_details TEXT,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id),
+          FOREIGN KEY (position_id) REFERENCES positions(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS attendance (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          employee_id TEXT NOT NULL,
+          date TEXT NOT NULL, -- YYYY-MM-DD
+          clock_in TEXT,
+          clock_out TEXT,
+          breaks TEXT, -- JSON array of ranges
+          status TEXT DEFAULT 'present', -- 'present' | 'absent' | 'late' | 'justified'
+          justification TEXT,
+          total_minutes INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id),
+          FOREIGN KEY (employee_id) REFERENCES employees(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS leaves (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          employee_id TEXT NOT NULL,
+          type TEXT NOT NULL, -- 'vacation' | 'sick' | 'maternity' | 'paternity' | 'other'
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          status TEXT DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+          reason TEXT,
+          approved_by TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id),
+          FOREIGN KEY (employee_id) REFERENCES employees(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS payroll (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          employee_id TEXT NOT NULL,
+          period_month INTEGER NOT NULL,
+          period_year INTEGER NOT NULL,
+          base_salary REAL NOT NULL,
+          overtime_pay REAL DEFAULT 0,
+          bonus REAL DEFAULT 0,
+          subsidy_meal REAL DEFAULT 0,
+          subsidy_transport REAL DEFAULT 0,
+          deduction_inss REAL DEFAULT 0,
+          deduction_irps REAL DEFAULT 0,
+          deduction_other REAL DEFAULT 0,
+          net_salary REAL NOT NULL,
+          status TEXT DEFAULT 'draft', -- 'draft' | 'paid' | 'cancelled'
+          payment_date TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id),
+          FOREIGN KEY (employee_id) REFERENCES employees(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_hr_employees_company ON employees(company_id);
+        CREATE INDEX IF NOT EXISTS idx_hr_attendance_date ON attendance(date);
+        CREATE INDEX IF NOT EXISTS idx_hr_attendance_employee ON attendance(employee_id);
+        CREATE INDEX IF NOT EXISTS idx_hr_payroll_period ON payroll(period_year, period_month);
+      `
+    },
+    {
+      name: '021_attendance_breaks',
+      query: 'ALTER TABLE attendance ADD COLUMN breaks TEXT;'
+    },
+    {
+      name: '021b_attendance_status',
+      query: 'ALTER TABLE attendance ADD COLUMN status TEXT DEFAULT "present";'
+    },
+    {
+      name: '021c_attendance_minutes',
+      query: 'ALTER TABLE attendance ADD COLUMN total_minutes INTEGER DEFAULT 0;'
+    },
+    {
+      name: '022_emp_nacionality',
+      query: 'ALTER TABLE employees ADD COLUMN nacionality TEXT;'
+    },
+    {
+      name: '022b_emp_civil',
+      query: 'ALTER TABLE employees ADD COLUMN civil_status TEXT;'
+    },
+    {
+      name: '022c_emp_bank',
+      query: 'ALTER TABLE employees ADD COLUMN bank_name TEXT;'
+    },
+    {
+      name: '022d_emp_acc',
+      query: 'ALTER TABLE employees ADD COLUMN bank_account TEXT;'
+    },
+    {
+      name: '022e_emp_nib',
+      query: 'ALTER TABLE employees ADD COLUMN nib TEXT;'
+    },
+    {
+      name: '023_add_product_reference',
+      query: 'ALTER TABLE products ADD COLUMN reference TEXT;'
     }
   ]
 
@@ -363,12 +525,26 @@ export async function runMigrations() {
     )
 
     if (!executed) {
-      db.execSync(migration.query)
-      db.runSync(
-        'INSERT INTO migrations (name) VALUES (?)', 
-        [migration.name]
-      )
-      console.log(`Migration ${migration.name} executed successfully.`)
+      try {
+        db.execSync(migration.query)
+        db.runSync(
+          'INSERT INTO migrations (name) VALUES (?)', 
+          [migration.name]
+        )
+        console.log(`Migration ${migration.name} executed successfully.`)
+      } catch (e: any) {
+        // If the error is 'duplicate column name', we can mark it as executed
+        if (e.message?.includes('duplicate column name')) {
+          db.runSync(
+            'INSERT INTO migrations (name) VALUES (?)', 
+            [migration.name]
+          )
+          console.log(`Migration ${migration.name} already applied (column exists).`)
+        } else {
+          console.error(`Migration ${migration.name} failed:`, e)
+          // Don't throw, allow other migrations to try
+        }
+      }
     }
   }
 }

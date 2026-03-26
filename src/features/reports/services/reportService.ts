@@ -7,9 +7,10 @@ import { useCompanyStore } from '@/store/companyStore'
 
 export const reportService = {
   async generateInventoryReport(): Promise<void> {
-    const data = reportRepository.getInventoryData()
-    const { settings } = useSettingsStore.getState()
     const { activeCompanyId, companies } = useCompanyStore.getState()
+    if (!activeCompanyId) return
+    const data = reportRepository.getInventoryData(activeCompanyId)
+    const { settings } = useSettingsStore.getState()
     const activeCompany = companies.find(c => c.id === activeCompanyId)
     const currencySymbol = getCurrencySymbol(settings.currency)
 
@@ -75,6 +76,7 @@ export const reportService = {
             <thead>
               <tr>
                 <th>Produto</th>
+                <th>Referência</th>
                 <th>SKU</th>
                 <th>Categoria</th>
                 <th>Stock</th>
@@ -85,6 +87,7 @@ export const reportService = {
               ${data.items.map(item => `
                 <tr>
                   <td>${item.name}</td>
+                  <td style="color: #64748b; font-family: monospace;">${item.reference || '-'}</td>
                   <td>${item.sku}</td>
                   <td>${item.category}</td>
                   <td class="${item.current_stock <= item.minimum_stock ? 'low-stock' : ''}">${item.current_stock}</td>
@@ -104,9 +107,9 @@ export const reportService = {
   },
 
   async generateMovementsReport(): Promise<void> {
-    const data = reportRepository.getMovementsData()
-    
     const { activeCompanyId, companies } = useCompanyStore.getState()
+    if (!activeCompanyId) return
+    const data = reportRepository.getMovementsData(activeCompanyId)
     const activeCompany = companies.find(c => c.id === activeCompanyId)
     const companyLogo = activeCompany?.logo_url ? `<img src="${activeCompany.logo_url}" style="height: 50px; margin-bottom: 10px;" />` : ''
     
@@ -177,9 +180,10 @@ export const reportService = {
   },
 
   async generateExpiryReport(): Promise<void> {
-    const items = reportRepository.getExpiryData()
-
     const { activeCompanyId, companies } = useCompanyStore.getState()
+    if (!activeCompanyId) return
+    const items = reportRepository.getExpiryData(activeCompanyId)
+
     const activeCompany = companies.find(c => c.id === activeCompanyId)
     const companyLogo = activeCompany?.logo_url ? `<img src="${activeCompany.logo_url}" style="height: 50px; margin-bottom: 10px;" />` : ''
 
@@ -211,6 +215,7 @@ export const reportService = {
             <thead>
               <tr>
                 <th>Produto</th>
+                <th>Referência</th>
                 <th>Lote</th>
                 <th>Validade</th>
                 <th>Quantidade</th>
@@ -220,6 +225,7 @@ export const reportService = {
               ${items.map(item => `
                 <tr>
                   <td>${item.name}</td>
+                  <td style="color: #64748b; font-family: monospace;">${item.reference || '-'}</td>
                   <td>${item.lot_number}</td>
                   <td class="alert">${new Date(item.expiry_date).toLocaleDateString('pt-PT')}</td>
                   <td>${item.quantity}</td>

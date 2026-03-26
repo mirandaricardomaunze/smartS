@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
@@ -14,13 +14,31 @@ import { LinearGradient } from 'expo-linear-gradient'
 import ProfileFormModal from '@/features/auth/components/ProfileFormModal'
 import { hasPermission } from '@/utils/permissions'
 import { feedback as hapticFeedback } from '@/utils/haptics'
+import { useFormatter } from '@/hooks/useFormatter'
+import { movementsRepository } from '@/repositories/movementsRepository'
+import { productsRepository } from '@/repositories/productsRepository'
+import { historyRepository } from '@/repositories/historyRepository'
 
 export default function ProfileScreen() {
   const { user } = useAuthStore()
   const { logout, updateProfile } = useAuth()
   const [isEditModalVisible, setIsEditModalVisible] = React.useState(false)
+  const [stats, setStats] = React.useState({ movements: 0, products: 0, history: 0 })
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
-  const isAdmin = user?.role === 'admin'
+  React.useEffect(() => {
+    if (user?.id && user?.company_id) {
+       try {
+         const movs = movementsRepository.getAll(user.company_id).filter(m => m.user_id === user.id).length
+         const prods = productsRepository.getAll(user.company_id).length
+         const hist = historyRepository.getAll(user.company_id).filter(h => h.user_id === user.id).length
+         setStats({ movements: movs, products: prods, history: hist })
+       } catch (error) {
+         console.log(error)
+       }
+    }
+  }, [user])
 
   const InfoRow = ({ icon, label, value, last = false }: any) => (
     <View className={`flex-row items-center py-4 ${!last ? 'border-b border-white/10 dark:border-slate-800/50' : ''}`}>
@@ -41,7 +59,7 @@ export default function ProfileScreen() {
       <ScrollView className="flex-1" contentContainerClassName="pb-10">
         <Animated.View entering={FadeInDown.delay(200)}>
           <LinearGradient
-            colors={['#4f46e5', '#6366f1', '#a855f7']}
+            colors={isDark ? ['#1e1b4b', '#0f172a'] : ['#4f46e5', '#4338ca']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             className="items-center py-12 rounded-b-[48px] border-b border-white/10 shadow-lg shadow-black/10"
@@ -65,16 +83,16 @@ export default function ProfileScreen() {
           <Animated.View entering={FadeInUp.delay(400)}>
             <View className="flex-row justify-between mb-8">
               <Card variant="glass" glassIntensity={15} className="flex-1 mr-2 items-center p-5 border-white/20">
-                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-primary">124</Text>
+                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-primary">{stats.movements}</Text>
                  <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Movimentos</Text>
               </Card>
               <Card variant="glass" glassIntensity={15} className="flex-1 mx-1 items-center p-5 border-white/20">
-                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-emerald-500">12</Text>
-                 <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Novos Itens</Text>
+                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-emerald-500">{stats.products}</Text>
+                 <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Produtos App</Text>
               </Card>
               <Card variant="glass" glassIntensity={15} className="flex-1 ml-2 items-center p-5 border-white/20">
-                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-amber-500">03</Text>
-                 <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Relatórios</Text>
+                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-amber-500">{stats.history}</Text>
+                 <Text style={{ fontFamily: 'Inter-Bold' }} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Meus Registos</Text>
               </Card>
             </View>
           </Animated.View>
@@ -96,26 +114,24 @@ export default function ProfileScreen() {
                 <InfoRow 
                   icon={<Calendar size={20} color="#4f46e5" />} 
                   label="Membro desde" 
-                  value="Março 2024" 
+                  value={user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' }) : '--'} 
                   last
                 />
               </View>
             </Card>
           </Animated.View>
           
-          {isAdmin && (
-            <Button
-              variant="gradient"
-              gradientColors={['#4f46e5', '#6366f1']}
-              title="Editar Perfil"
-              onPress={() => {
-                hapticFeedback.light()
-                setIsEditModalVisible(true)
-              }}
-              icon={<Pencil size={18} color="white" />}
-              className="mb-6 h-14 rounded-2xl shadow-lg shadow-indigo-500/30"
-            />
-          )}
+          <Button
+            variant="gradient"
+            gradientColors={['#4f46e5', '#6366f1']}
+            title="Editar Perfil"
+            onPress={() => {
+              hapticFeedback.light()
+              setIsEditModalVisible(true)
+            }}
+            icon={<Pencil size={18} color="white" />}
+            className="mb-6 h-14 rounded-2xl shadow-lg shadow-indigo-500/30"
+          />
           
           <TouchableOpacity 
             onPress={logout}

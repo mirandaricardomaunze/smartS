@@ -26,13 +26,17 @@ export function useCategories() {
   }
 
   const updateCategory = async (id: string, data: Partial<Category>) => {
-    categoryRepository.update(id, data)
-    fetchCategories()
+    if (activeCompanyId) {
+      categoryRepository.update(activeCompanyId, id, data)
+      fetchCategories()
+    }
   }
 
   const deleteCategory = async (id: string) => {
-    categoryRepository.delete(id)
-    fetchCategories()
+    if (activeCompanyId) {
+      categoryRepository.delete(activeCompanyId, id)
+      fetchCategories()
+    }
   }
 
   return {

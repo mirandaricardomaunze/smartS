@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react'
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native'
-import { X, TrendingUp, ShoppingBag, CreditCard, Calendar, Star, Trophy } from 'lucide-react-native'
+import { View, Text, ScrollView, TouchableOpacity, Share } from 'react-native'
+import { X, TrendingUp, ShoppingBag, CreditCard, Calendar, Star, Trophy, AlertCircle, MessageSquare, CheckCircle2 } from 'lucide-react-native'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Customer } from '@/types'
 import { crmService } from '../services/crmService'
 import { useFormatter } from '@/hooks/useFormatter'
 import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
 import { LinearGradient } from 'expo-linear-gradient'
+import { feedback } from '@/utils/haptics'
+import { useToastStore } from '@/store/useToastStore'
 
 interface CustomerStatsModalProps {
   isVisible: boolean
@@ -19,8 +22,32 @@ export default function CustomerStatsModal({ isVisible, onClose, customer }: Cus
   
   const stats = useMemo(() => {
     if (!customer) return null
-    return crmService.getCustomerStats(customer.id)
+    const baseStats = crmService.getCustomerStats(customer.id)
+    const pendingOrders = crmService.getPendingOrders(customer.id)
+    return { ...baseStats, pending_orders: pendingOrders }
   }, [customer])
+
+  const handleMarkAsPaid = async (orderId: string) => {
+    feedback.medium()
+    try {
+      crmService.markOrderAsPaid(orderId)
+      useToastStore.getState().show('Estado atualizado para Pago', 'success')
+      onClose() // Reload happens on next open or we could trigger a refresh
+    } catch (e) {
+      useToastStore.getState().show('Falha ao atualizar', 'error')
+    }
+  }
+
+  const handleSendReminder = async () => {
+    if (!stats || !customer) return
+    feedback.light()
+    const message = `Olá ${customer.name}, esperamos que esteja bem! Gostaríamos de lembrar que possui um saldo pendente de ${formatCurrency(stats.total_debt)} referente a compras anteriores. Poderia confirmar para quando prevê regularizar? Obrigado!`
+    try {
+      await Share.share({ message })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   if (!customer || !stats) return null
 
@@ -87,6 +114,16 @@ export default function CustomerStatsModal({ isVisible, onClose, customer }: Cus
                 </Text>
             </Card>
 
+            <Card variant="premium" className="w-[48%] p-5 rounded-[24px] bg-rose-50 border-rose-100">
+                <View className="w-10 h-10 bg-rose-500/10 rounded-xl items-center justify-center mb-4">
+                    <AlertCircle size={20} color="#ef4444" />
+                </View>
+                <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1 font-bold">Saldo Devedor</Text>
+                <Text className="text-lg font-black text-rose-600 leading-5">
+                    {formatCurrency(stats.total_debt)}
+                </Text>
+            </Card>
+
             <Card variant="premium" className="w-[48%] p-5 rounded-[24px]">
                 <View className="w-10 h-10 bg-amber-500/10 rounded-xl items-center justify-center mb-4">
                     <Calendar size={20} color="#f59e0b" />
@@ -97,6 +134,42 @@ export default function CustomerStatsModal({ isVisible, onClose, customer }: Cus
                 </Text>
             </Card>
         </View>
+
+        {/* Action Button: Collect */}
+        {stats.total_debt > 0 && (
+            <Button
+                title="Cobrar via WhatsApp"
+                variant="primary"
+                className="h-14 rounded-[24px] mb-8 bg-emerald-600 shadow-lg shadow-emerald-500/20"
+                icon={<MessageSquare size={20} color="white" />}
+                onPress={handleSendReminder}
+            />
+        )}
+
+        {/* Pending Invoices */}
+        {stats.pending_orders.length > 0 && (
+            <>
+                <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Faturas Pendentes</Text>
+                <Card className="bg-rose-50/30 dark:bg-rose-900/5 border-rose-100 dark:border-rose-900/20 p-4 rounded-[24px] mb-10">
+                    {stats.pending_orders.map((order, index) => (
+                        <View key={order.id} className={`flex-row items-center justify-between py-4 ${index !== stats.pending_orders.length - 1 ? 'border-b border-rose-100/50' : ''}`}>
+                            <View>
+                                <Text className="text-slate-900 dark:text-white font-bold text-sm">Pedido #{order.number}</Text>
+                                <Text className="text-slate-500 text-xs">{new Date(order.created_at).toLocaleDateString('pt-PT')}</Text>
+                                <Text className="text-rose-600 font-black text-sm mt-1">{formatCurrency(order.total_amount - (order.discount || 0))}</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => handleMarkAsPaid(order.id)}
+                                className="bg-emerald-500/10 px-4 py-2 rounded-xl flex-row items-center"
+                            >
+                                <CheckCircle2 size={14} color="#10b981" />
+                                <Text className="text-emerald-600 font-bold ml-2 text-xs">PAGAR</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </Card>
+            </>
+        )}
 
         {/* Favorite Products */}
         <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Produtos Favoritos</Text>

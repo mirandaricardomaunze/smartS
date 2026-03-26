@@ -41,3 +41,19 @@ CREATE INDEX IF NOT EXISTS idx_[table_name]_synced ON [table_name](synced);
 
 ## After Creating
 Register the migration in `src/database/sqlite.ts` inside the migrations runner array.
+
+## Safe Migration Pattern (MANDATORY)
+In `src/database/sqlite.ts`, all migrations must be wrapped in a `try/catch` to handle partially applied schemas (e.g., column already exists).
+
+```typescript
+try {
+  db.execSync(migration.query)
+  // ... mark as executed
+} catch (e: any) {
+  if (e.message?.includes('duplicate column name')) {
+    // Column already exists, mark as success
+  } else {
+    throw e;
+  }
+}
+```

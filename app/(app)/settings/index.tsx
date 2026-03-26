@@ -21,8 +21,11 @@ import {
   BarChart3,
   FileText,
   Bell,
-  Activity
+  Activity,
+  Fingerprint,
+  Shield
 } from 'lucide-react-native'
+import { useBiometrics } from '@/hooks/useBiometrics'
 import PickerModal from '@/components/ui/PickerModal'
 import { getCurrencySymbol } from '@/utils/formatters'
 import { feedback } from '@/utils/haptics'
@@ -40,6 +43,7 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { settings, toggleDarkMode, updateSettings } = useSettings()
   const { logout, user } = useAuth()
+  const { isSupported, isEnrolled } = useBiometrics()
   const [langModalVisible, setLangModalVisible] = useState(false)
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false)
 
@@ -244,6 +248,29 @@ export default function SettingsScreen() {
             rightElement={<Switch value={settings.include_tax === 1} onValueChange={(val) => updateSettings({ include_tax: val ? 1 : 0 })} trackColor={{ false: '#e2e8f0', true: '#4f46e5' }} />}
             color="primary"
          />
+         
+         {/* Segurança */}
+         {isSupported && (
+           <>
+             <SectionTitle title="Segurança Avançada" />
+             <SettingCard 
+                icon={<Fingerprint size={18} color="#10b981" />} 
+                title="Autenticação Biométrica" 
+                value={!isEnrolled ? 'Não configurado no dispositivo' : (settings.biometrics_enabled === 1 ? 'Ativado' : 'Desativado')}
+                onPress={isEnrolled ? () => updateSettings({ biometrics_enabled: settings.biometrics_enabled === 1 ? 0 : 1 }) : undefined}
+                rightElement={
+                  isEnrolled ? (
+                    <Switch 
+                      value={settings.biometrics_enabled === 1} 
+                      onValueChange={(val) => updateSettings({ biometrics_enabled: val ? 1 : 0 })} 
+                      trackColor={{ false: '#e2e8f0', true: '#10b981' }} 
+                    />
+                  ) : <Shield size={16} color="#94a3b8" />
+                }
+                color="emerald"
+             />
+           </>
+         )}
 
          {/* Ferramentas de Dados */}
          <SectionTitle title="Backup e Ferramentas" />

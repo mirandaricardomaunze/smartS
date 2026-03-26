@@ -4,24 +4,25 @@ import { Product } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 
 export const productsRepository = {
-  getAll(companyId: string): Product[] {
+  getAll(companyId: string, limit: number = 20, offset: number = 0): Product[] {
     return db.getAllSync<Product>(
       `SELECT p.*, c.name as category, s.name as supplier 
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN suppliers s ON p.supplier_id = s.id
        WHERE p.company_id = ? AND p.is_active = 1 
-       ORDER BY p.name ASC`,
-      [companyId]
+       ORDER BY p.name ASC
+       LIMIT ? OFFSET ?`,
+      [companyId, limit, offset]
     )
   },
-  getById(id: string): Product | null {
+  getById(companyId: string, id: string): Product | null {
     return db.getFirstSync<Product>(
       `SELECT p.*, c.name as category, s.name as supplier 
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        LEFT JOIN suppliers s ON p.supplier_id = s.id
-       WHERE p.id = ?`, [id]
+       WHERE p.id = ? AND p.company_id = ?`, [id, companyId]
     ) ?? null
   },
   getByBarcode(companyId: string, barcode: string): Product | null {
@@ -39,13 +40,14 @@ export const productsRepository = {
       synced: 0,
     }
     db.runSync(
-      `INSERT INTO products (id, company_id, name, barcode, sku, category_id, brand, unit, units_per_box, boxes_per_pallet, minimum_stock, current_stock, purchase_price, sale_price, tax_rate, supplier_id, description, image_url, expiry_date, is_active, created_at, updated_at, synced)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (id, company_id, name, barcode, reference, sku, category_id, brand, unit, units_per_box, boxes_per_pallet, minimum_stock, current_stock, purchase_price, sale_price, tax_rate, supplier_id, description, image_url, expiry_date, is_active, created_at, updated_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         product.id, 
         product.company_id, 
         product.name, 
         product.barcode ?? null, 
+        product.reference ?? null,
         product.sku, 
         product.category_id ?? null, 
         product.brand ?? null, 
@@ -70,7 +72,7 @@ export const productsRepository = {
     addToSyncQueue('products', 'INSERT', product)
     return product
   },
-  update(id: string, data: Partial<Product>): void {
+  update(id: string, companyId: string, data: Partial<Product>): void {
     const updated = { ...data, updated_at: new Date().toISOString(), synced: 0 }
     
     const setClause = Object.keys(updated)
@@ -79,18 +81,18 @@ export const productsRepository = {
     const values = Object.values(updated)
     
     db.runSync(
-      `UPDATE products SET ${setClause} WHERE id = ?`,
-      [...values, id]
+      `UPDATE products SET ${setClause} WHERE id = ? AND company_id = ?`,
+      [...values, id, companyId]
     )
 
-    const current = this.getById(id)
+    const current = this.getById(companyId, id)
     if (current) {
       addToSyncQueue('products', 'UPDATE', current)
     }
   },
-  delete(id: string): void {
+  delete(companyId: string, id: string): void {
     const updated_at = new Date().toISOString()
-    db.runSync('UPDATE products SET is_active=0, synced=0, updated_at=? WHERE id=?', [updated_at, id])
-    addToSyncQueue('products', 'UPDATE', { id, is_active: 0, updated_at })
+    db.runSync('UPDATE products SET is_active=0, synced=0, updated_at=? WHERE id=? AND company_id=?', [updated_at, id, companyId])
+    addToSyncQueue('products', 'UPDATE', { id, company_id: companyId, is_active: 0, updated_at })
   },
 }

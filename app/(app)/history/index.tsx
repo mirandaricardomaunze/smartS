@@ -6,11 +6,13 @@ import Card from '@/components/ui/Card'
 import Loading from '@/components/ui/Loading'
 import EmptyState from '@/components/ui/EmptyState'
 import Input from '@/components/ui/Input'
+import { FilterBar } from '@/components/ui'
 import { useHistory } from '@/features/history/hooks/useHistory'
 import { HistoryEntry, User } from '@/types'
 import { useFormatter } from '@/hooks/useFormatter'
 import { usersRepository } from '@/repositories/usersRepository'
 import { useCompanyStore } from '@/store/companyStore'
+import RoleGuard from '@/components/layout/RoleGuard'
 import { 
   History as HistoryIcon, 
   Search, 
@@ -138,7 +140,7 @@ export default function HistoryListScreen() {
           {isExpanded && (
             <View className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
               <Text className="text-slate-400 dark:text-slate-500 text-xs mb-2 font-bold uppercase tracking-widest">Detalhes do Registo</Text>
-              <View className="bg-slate-900/50 dark:bg-slate-950 p-4 rounded-2xl border border-white/5">
+              <View className="bg-slate-900/50 dark:bg-slate-900/90 p-4 rounded-2xl border border-white/5">
                 {Object.entries(JSON.parse(item.data)).map(([key, value], idx) => (
                   <View key={idx} className="flex-row justify-between mb-1">
                     <Text className="text-slate-500 text-[10px] uppercase font-bold">{key}:</Text>
@@ -160,56 +162,56 @@ export default function HistoryListScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} withHeader>
-      <Header 
-        title="Auditoria" 
-        showBack 
-      />
-      
-      <View className="px-4 mt-4 mb-2">
-        <Input
-          placeholder="Pesquisar por ação ou tabela..."
-          value={search}
-          onChangeText={setSearch}
-          icon={<Search size={20} color="#94a3b8" />}
-          className="bg-white/50 dark:bg-slate-900/50 mb-4"
+    <RoleGuard permission="view_history">
+      <Screen padHorizontal={false} withHeader>
+        <Header 
+          title="Auditoria" 
+          showBack 
         />
         
-        <View className="flex-row space-x-2">
-          {['ALL', 'CREATE', 'UPDATE', 'DELETE'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg border ${filter === f ? 'bg-primary border-primary' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}
-            >
-              <Text className={`text-[10px] font-bold ${filter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                {f === 'ALL' ? 'TUDO' : f === 'CREATE' ? 'CRIAR' : f === 'UPDATE' ? 'EDITAR' : 'APAGAR'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View className="px-4 mt-4">
+          <Input
+            placeholder="Pesquisar por ação ou tabela..."
+            value={search}
+            onChangeText={setSearch}
+            icon={<Search size={20} color="#94a3b8" />}
+            className="bg-white/50 dark:bg-slate-900/50 mb-0"
+          />
+          
+          <FilterBar
+            options={[
+              { label: 'TUDO', value: 'ALL' },
+              { label: 'CRIAR', value: 'CREATE' },
+              { label: 'EDITAR', value: 'UPDATE' },
+              { label: 'APAGAR', value: 'DELETE' },
+            ]}
+            selectedValue={filter}
+            onSelect={setFilter}
+            className="py-2"
+          />
         </View>
-      </View>
 
-      <FlatList
-        data={filteredLogs}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          hasMore && logs.length > 0 ? (
-            <View className="py-4 items-center">
-              <ActivityIndicator size="small" color="#4f46e5" />
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          isLoading ? <Loading /> : <EmptyState title="Nenhuma atividade registada" icon={<HistoryIcon size={48} color="#94a3b8" />} />
-        }
-        onRefresh={reload}
-        refreshing={isLoading}
-      />
-    </Screen>
+        <FlatList
+          data={filteredLogs}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ padding: 16 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            hasMore && logs.length > 0 ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color="#4f46e5" />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            isLoading ? <Loading /> : <EmptyState title="Nenhuma atividade registada" icon={<HistoryIcon size={48} color="#94a3b8" />} />
+          }
+          onRefresh={reload}
+          refreshing={isLoading}
+        />
+      </Screen>
+    </RoleGuard>
   )
 }

@@ -18,9 +18,9 @@ export function useBiometrics() {
   }, []);
 
   const authenticateAsync = async (promptMessage = 'Autenticar com Biometria') => {
-    // If the device does not support it, we fail open (allow access) 
-    // to prevent permanently locking out users on old devices.
-    if (!isSupported || !isEnrolled) return true; 
+    // Fail closed: if biometrics are unavailable/unenrolled, deny access.
+    // The caller should provide a PIN fallback for these devices.
+    if (!isSupported || !isEnrolled) return false;
     
     try {
       const result = await LocalAuthentication.authenticateAsync({

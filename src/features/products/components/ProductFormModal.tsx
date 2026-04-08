@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Modal, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native'
-import { X, ScanLine, ChevronDown, Tag, Truck } from 'lucide-react-native'
+import { X, ScanLine, ChevronDown, Tag, Truck, Plus, Save, Edit2 } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import PickerModal from '@/components/ui/PickerModal'
@@ -264,6 +264,7 @@ export default function ProductFormModal({
       <BottomSheet
         visible={visible}
         onClose={onClose}
+        height={0.85}
       >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -271,8 +272,8 @@ export default function ProductFormModal({
         >
           <View className="bg-white dark:bg-slate-950 flex-1 overflow-hidden">
             {/* Header */}
-            <View className="flex-row justify-between items-center px-6 py-5">
-                <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
+            <View className="flex-row justify-between items-center px-6 py-4">
+                <Text style={{ fontFamily: 'Inter-Black' }} className="text-xl font-black text-slate-900 dark:text-white flex-1 mr-4" numberOfLines={2}>
                   {title || (initialData ? 'Editar Produto' : 'Novo Produto')}
                 </Text>
                 <TouchableOpacity 
@@ -442,10 +443,11 @@ export default function ProductFormModal({
               <Button 
                 variant="gradient"
                 gradientColors={['#4f46e5', '#4338ca']}
-                title={initialData ? "Guardar Alterações" : "Criar Produto"} 
+                title={initialData ? "Guardar Alterações" : "Adicionar Produto"} 
                 onPress={handleSave}
                 isLoading={isSubmitting}
-                className="h-14 rounded-2xl shadow-lg shadow-primary/30"
+                icon={initialData ? <Edit2 size={20} color="white" /> : <Plus size={20} color="white" />}
+                className="shadow-lg shadow-primary/30"
               />
             </View>
           </View>

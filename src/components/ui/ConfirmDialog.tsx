@@ -1,38 +1,61 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { View, Text } from 'react-native'
 import Button from './Button'
 import BottomSheet from './BottomSheet'
+import { useConfirmStore } from '@/store/useConfirmStore'
 
-interface ConfirmDialogProps {
-  visible: boolean
-  title: string
-  message: string
-  confirmLabel?: string
-  cancelLabel?: string
-  isDestructive?: boolean
-  isLoading?: boolean
-  onConfirm: () => void
-  onCancel: () => void
-}
+export default function ConfirmDialog() {
+  const { visible, options, hide } = useConfirmStore()
+  const [loading, setLoading] = useState(false)
+  const isMounted = useRef(true)
 
-export default function ConfirmDialog({
-  visible,
-  title,
-  message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
-  isDestructive = false,
-  isLoading = false,
-  onConfirm,
-  onCancel
-}: ConfirmDialogProps) {
+  useEffect(() => {
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
+  if (!options) return null
+
+  const {
+    title,
+    message,
+    confirmLabel = 'Confirmar',
+    cancelLabel = 'Cancelar',
+    isDestructive = false,
+    showCancel = true,
+    onConfirm,
+    onCancel
+  } = options
+
+  const handleConfirm = async () => {
+    try {
+      setLoading(true)
+      await onConfirm()
+      if (isMounted.current) {
+        hide()
+      }
+    } catch (error) {
+      console.error('Confirm dialog action failed:', error)
+    } finally {
+      if (isMounted.current) {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleCancel = () => {
+    if (onCancel) onCancel()
+    hide()
+  }
+
   return (
     <BottomSheet
       visible={visible}
-      onClose={onCancel}
-      height={0.4}
+      onClose={handleCancel}
+      height={0.5}
     >
-      <View className="px-6 pb-12">
+      <View className="px-6 pb-6">
         <Text className="text-xl font-black text-slate-900 dark:text-white mb-2">
           {title}
         </Text>
@@ -40,21 +63,24 @@ export default function ConfirmDialog({
           {message}
         </Text>
         
-        <View className="space-y-3">
+        <View>
           <Button
             title={confirmLabel}
             variant={isDestructive ? 'danger' : 'primary'}
-            onPress={onConfirm}
-            isLoading={isLoading}
-            className="w-full h-14 rounded-2xl"
+            onPress={handleConfirm}
+            isLoading={loading}
+            className="w-full h-14 rounded-2xl mb-3"
           />
-          <Button
-            title={cancelLabel}
-            variant="ghost"
-            onPress={onCancel}
-            disabled={isLoading}
-            className="w-full h-14 -mt-2"
-          />
+          {showCancel && (
+            <Button
+              title={cancelLabel}
+              variant="ghost"
+              onPress={handleCancel}
+              disabled={loading}
+              className="w-full h-14"
+              accessibilityLabel="Cancelar"
+            />
+          )}
         </View>
       </View>
     </BottomSheet>

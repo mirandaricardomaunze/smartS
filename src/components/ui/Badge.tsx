@@ -3,7 +3,7 @@ import { View, Text } from 'react-native'
 
 interface BadgeProps {
   label: string
-  variant?: 'success' | 'warning' | 'danger' | 'info'
+  variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral'
   className?: string
 }
 
@@ -27,6 +27,10 @@ export default function Badge({ label, variant = 'info', className = '' }: Badge
     case 'info':
       bgClass = 'bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20'
       textClass = 'text-primary dark:text-primary-dark font-bold'
+      break
+    case 'neutral':
+      bgClass = 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+      textClass = 'text-slate-600 dark:text-slate-400 font-bold'
       break
 
   }

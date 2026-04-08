@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity } from 'react-native'
 import { useCategories } from '@/features/products/hooks/useCategories'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
@@ -13,6 +13,7 @@ import Input from '@/components/ui/Input'
 import { feedback } from '@/utils/haptics'
 import { Category } from '@/types'
 import { useToastStore } from '@/store/useToastStore'
+import { useConfirmStore } from '@/store/useConfirmStore'
 
 export default function CategoriesScreen() {
   const { categories, isLoading, fetchCategories, createCategory, updateCategory, deleteCategory } = useCategories()
@@ -55,54 +56,61 @@ export default function CategoriesScreen() {
   }
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      'Eliminar Categoria',
-      'Tem a certeza que deseja eliminar esta categoria?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
-          style: 'destructive', 
-          onPress: async () => {
-            try {
-              await deleteCategory(id)
-              showToast('Categoria eliminada', 'success')
-              feedback.heavy()
-            } catch (e) {
-              showToast('Falha ao eliminar categoria', 'error')
-            }
-          } 
+    useConfirmStore.getState().show({
+      title: 'Eliminar Categoria',
+      message: 'Tem a certeza que deseja eliminar esta categoria?',
+      confirmLabel: 'Eliminar',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          await deleteCategory(id)
+          showToast('Categoria eliminada', 'success')
+          feedback.heavy()
+        } catch (e) {
+          showToast('Falha ao eliminar categoria', 'error')
         }
-      ]
-    )
+      }
+    })
   }
 
   const renderCategory = ({ item }: { item: Category }) => (
-    <Card className="mb-3 p-4 flex-row items-center justify-between border-slate-100 dark:border-slate-800">
-      <View className="flex-row items-center flex-1">
-        <View className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/10 items-center justify-center rounded-2xl mr-4 border border-indigo-100 dark:border-indigo-800">
-          <Tag size={24} color="#6366f1" />
-        </View>
-        <View className="flex-1">
-          <Text style={{ fontFamily: 'Inter-Bold' }} className="text-base font-bold text-slate-800 dark:text-white">
-            {item.name}
-          </Text>
-          <Text className="text-xs text-slate-500 font-medium" numberOfLines={1}>
-            {item.description || 'Sem descrição'}
-          </Text>
+    <Card className="mb-4 p-5">
+      <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center flex-1">
+          <View className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/10 items-center justify-center rounded-2xl mr-4 border border-indigo-100 dark:border-indigo-800">
+            <Tag size={24} color="#6366f1" />
+          </View>
+          <View className="flex-1">
+            <Text 
+              style={{ fontFamily: 'Inter-Bold' }} 
+              className="text-base font-bold text-slate-800 dark:text-white"
+              numberOfLines={1}
+            >
+              {item.name}
+            </Text>
+            <Text className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1" numberOfLines={2}>
+              {item.description || 'Sem descrição definida'}
+            </Text>
+          </View>
         </View>
       </View>
-      <View className="flex-row items-center">
+
+      <View className="flex-row items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800/60">
         <TouchableOpacity 
            onPress={() => {
+             feedback.light()
              setSelectedCategory(item)
              setModalVisible(true)
            }}
-           className="p-2"
+           className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl items-center justify-center mr-2"
         >
           <Edit2 size={18} color="#64748b" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.id)} className="p-2">
+        
+        <TouchableOpacity 
+           onPress={() => handleDelete(item.id)} 
+           className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl items-center justify-center"
+        >
           <Trash2 size={18} color="#ef4444" />
         </TouchableOpacity>
       </View>
@@ -110,7 +118,7 @@ export default function CategoriesScreen() {
   )
 
   return (
-    <Screen withHeader padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1">
+    <Screen withHeader padHorizontal={false}>
       <Header 
         title="Categorias" 
         rightElement={
@@ -143,7 +151,17 @@ export default function CategoriesScreen() {
         keyExtractor={item => item.id}
         contentContainerClassName="px-6 pb-20"
         ListEmptyComponent={
-          isLoading ? <Loading /> : <EmptyState title="Sem categorias" description="Crie categorias para organizar os seus produtos." icon={<Tag size={48} color="#cbd5e1" />} />
+          isLoading ? <Loading /> : <EmptyState 
+            title="Sem categorias" 
+            description="Crie categorias para organizar os seus produtos." 
+            icon={<Tag size={48} color="#cbd5e1" />} 
+            actionLabel="Adicionar Categoria"
+            onAction={() => {
+              feedback.light()
+              setSelectedCategory(null)
+              setModalVisible(true)
+            }}
+          />
         }
         onRefresh={fetchCategories}
         refreshing={isLoading}

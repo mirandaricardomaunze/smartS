@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, KeyboardAvoidingView, Platform, useColorScheme } from 'react-native'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
+
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -14,7 +15,8 @@ import { useToastStore } from '@/store/useToastStore'
 import { StatusBar } from 'expo-status-bar'
 
 export default function ResetPasswordScreen() {
-  const router = useRouter()
+
+
   const { resetPassword, isLoading } = useAuth()
   const showToast = useToastStore((state) => state.show)
   const [password, setPassword] = useState('')
@@ -66,7 +68,7 @@ export default function ResetPasswordScreen() {
       >
         <Screen className="bg-transparent" noSafeTop noSafeBottom>
           <View className="flex-1 justify-center px-6">
-            <Card variant="glass" glassIntensity={15} className="w-full max-w-sm self-center p-8 border-white/20 shadow-premium-lg">
+            <Card variant="glass" glassIntensity={15} className="w-full max-w-[440px] self-center p-6 border-white/20 shadow-premium-lg">
               {success ? (
                 <View className="items-center py-4">
                   <View className="w-20 h-20 bg-emerald-500/20 rounded-full items-center justify-center mb-6 border border-emerald-500/30">

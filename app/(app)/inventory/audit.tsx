@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native'
 import { useToastStore } from '@/store/useToastStore'
+import { useConfirmStore } from '@/store/useConfirmStore'
 import { Plus, Search, Box, ArrowRight, Save, Trash2, AlertTriangle, Scan } from 'lucide-react-native'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
@@ -10,9 +11,11 @@ import { useProducts } from '@/features/products/hooks/useProducts'
 import { inventoryService } from '@/features/inventory/services/inventoryService'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { feedback } from '@/utils/haptics'
+import IconButton from '@/components/ui/IconButton'
 import ProductPickerModal from '@/features/products/components/ProductPickerModal'
 import { Product } from '@/types'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
+
 
 interface AuditItem {
   product: Product
@@ -20,7 +23,8 @@ interface AuditItem {
 }
 
 export default function AuditScreen() {
-  const router = useRouter()
+
+
   const { user } = useAuthStore()
   const { products, reload } = useProducts()
   const [auditList, setAuditList] = useState<AuditItem[]>([])
@@ -55,41 +59,36 @@ export default function AuditScreen() {
     if (auditList.length === 0) return
     if (!user || !user.company_id) return
 
-    Alert.alert(
-      'Confirmar Auditoria',
-      `Desejas aplicar os ajustes para ${auditList.length} itens? Esta ação criará movimentos de ajuste no histórico.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Confirmar', 
-          onPress: async () => {
-            setIsSaving(true)
-            try {
-              for (const item of auditList) {
-                await inventoryService.reconcileStock(
-                  item.product.id,
-                  item.countedQty,
-                  user.id,
-                  user.company_id!
-                )
-              }
-              feedback.success()
-              useToastStore.getState().show('Inventário atualizado com sucesso!', 'success')
-              setAuditList([])
-              router.back()
-            } catch (error: any) {
-              useToastStore.getState().show(error.message || 'Falha ao processar auditoria', 'error')
-            } finally {
-              setIsSaving(false)
-            }
+    useConfirmStore.getState().show({
+      title: 'Confirmar Auditoria',
+      message: `Desejas aplicar os ajustes para ${auditList.length} itens? Esta ação criará movimentos de ajuste no histórico.`,
+      confirmLabel: 'Confirmar',
+      onConfirm: async () => {
+        setIsSaving(true)
+        try {
+          for (const item of auditList) {
+            await inventoryService.reconcileStock(
+              item.product.id,
+              item.countedQty,
+              user.id,
+              user.company_id!
+            )
           }
+          feedback.success()
+          useToastStore.getState().show('Inventário atualizado com sucesso!', 'success')
+          setAuditList([])
+          router.back()
+        } catch (error: any) {
+          useToastStore.getState().show(error.message || 'Falha ao processar auditoria', 'error')
+        } finally {
+          setIsSaving(false)
         }
-      ]
-    )
+      }
+    })
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Inventário Físico" showBack />
 
       <ScrollView className="flex-1" contentContainerClassName="px-6 pt-6 pb-32">
@@ -100,22 +99,23 @@ export default function AuditScreen() {
             </Text>
         </View>
 
-        {/* Action Buttons */}
-        <View className="flex-row mb-8 space-x-3">
-            <TouchableOpacity 
+        <View className="flex-row items-center space-x-3 mb-8">
+            <Button 
                 onPress={() => setShowPicker(true)}
-                className="flex-1 bg-white dark:bg-slate-900 h-14 rounded-2xl border border-slate-200 dark:border-white/10 flex-row items-center justify-center shadow-sm"
-            >
-                <Plus size={20} color="#4f46e5" />
-                <Text className="ml-2 font-bold text-indigo-600 dark:text-indigo-400">Adicionar Prod.</Text>
-            </TouchableOpacity>
+                title="Adicionar Prod."
+                variant="outline"
+                icon={<Plus size={20} color="#4f46e5" />}
+                className="flex-1"
+            />
 
-            <TouchableOpacity 
+            <IconButton 
+                icon={Scan} 
+                variant="primary"
+                size="lg"
                 onPress={() => router.push('/(app)/scanner')}
-                className="w-14 h-14 bg-indigo-500 rounded-2xl items-center justify-center shadow-lg shadow-indigo-500/20"
-            >
-                <Scan size={24} color="white" />
-            </TouchableOpacity>
+                iconSize={24}
+                className="rounded-2xl shadow-lg shadow-indigo-500/20"
+            />
         </View>
 
         {/* Audit List */}
@@ -184,14 +184,14 @@ export default function AuditScreen() {
 
       {/* Footer Button */}
       {auditList.length > 0 && (
-        <View className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-slate-950/80 border-t border-slate-100 dark:border-white/5">
+        <View className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800">
              <Button 
                 title="Aplicar Ajustes de Inventário"
                 variant="gradient"
                 gradientColors={['#4f46e5', '#818cf8']}
                 isLoading={isSaving}
                 onPress={handleApplyAudit}
-                className="h-16 rounded-[24px] shadow-xl shadow-indigo-500/20"
+                className="shadow-xl shadow-indigo-500/20"
                 icon={<Save size={20} color="white" />}
              />
         </View>

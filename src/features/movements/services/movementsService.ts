@@ -12,6 +12,11 @@ export const movementsService = {
     if (!activeCompanyId) return []
     return movementsRepository.getAll(activeCompanyId, limit, offset)
   },
+  getById(id: string): (StockMovement & { product_name: string }) | null {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return null
+    return movementsRepository.getById(activeCompanyId, id)
+  },
   getByProductId(productId: string, limit: number = 50, offset: number = 0): StockMovement[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
@@ -45,7 +50,7 @@ export const movementsService = {
         user_id: user.id
     })
     
-    historyRepository.log(user.company_id, 'CREATE', 'movements', movement.id, user.id, movement)
+    historyRepository.log(user.company_id, 'CREATE', 'stock_movements', movement.id, user.id, movement)
     return movement
   },
 }

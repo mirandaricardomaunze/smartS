@@ -84,7 +84,7 @@ export default function ExpenseFormModal({ visible, onClose, onSubmit }: Expense
   }
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height={0.8}>
+    <BottomSheet visible={visible} onClose={onClose} height={0.85}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         className="flex-1"
@@ -164,10 +164,10 @@ export default function ExpenseFormModal({ visible, onClose, onSubmit }: Expense
               <Text style={{ fontFamily: 'Inter-Black' }} className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
                 Estado do Pagamento
               </Text>
-              <View className="flex-row gap-3">
+              <View className="flex-row">
                 <TouchableOpacity
                   onPress={() => setFormData(p => ({ ...p, status: 'paid' }))}
-                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border-2 ${
+                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border-2 mr-3 ${
                     formData.status === 'paid'
                       ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-500'
                       : 'bg-slate-50 dark:bg-slate-900 border-transparent'
@@ -203,7 +203,7 @@ export default function ExpenseFormModal({ visible, onClose, onSubmit }: Expense
               title="Registar Despesa"
               onPress={handleSave}
               isLoading={isSubmitting}
-              className="h-14 rounded-2xl shadow-lg shadow-primary/30 mb-8"
+              className="shadow-lg shadow-primary/30 mb-8"
             />
           </View>
         </View>

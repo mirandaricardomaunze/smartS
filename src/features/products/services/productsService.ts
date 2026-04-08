@@ -3,13 +3,14 @@ import { historyRepository } from '@/repositories/historyRepository'
 import { hasPermission } from '@/utils/permissions'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useCompanyStore } from '@/store/companyStore'
-import { Product } from '@/types'
+import { Product, PlanType } from '@/types'
+import { useSubscriptionStore } from '@/store/subscriptionStore'
 
 export const productsService = {
-  getAll(limit: number = 20, offset: number = 0): Product[] {
+  getAll(limit: number = 20, offset: number = 0, search?: string): Product[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
-    return productsRepository.getAll(activeCompanyId, limit, offset)
+    return productsRepository.getAll(activeCompanyId, limit, offset, search)
   },
   getById(id: string): Product | null {
     const { activeCompanyId } = useCompanyStore.getState()
@@ -26,12 +27,41 @@ export const productsService = {
     if (!user || !hasPermission(user.role, 'create_products')) {
       throw new Error('Sem permissão para criar produtos')
     }
+
+    // Check Plan Limits (BASIC/TRIAL limit = 500)
+    const { subscription } = useSubscriptionStore.getState()
+    const { activeCompanyId } = useCompanyStore.getState()
     
-    // 1. Create the product
-    const product = productsRepository.create(data)
+    if (activeCompanyId && (subscription?.plan === 'BASIC' || subscription?.plan === 'TRIAL')) {
+      const count = productsRepository.count(activeCompanyId)
+      if (count >= 500) {
+        throw new Error('Limite de 500 produtos atingido no seu plano. Faça upgrade para Profissional para registar mais produtos.')
+      }
+    }
+    
+    // 1. Create the product with 0 stock first (movements will update it)
+    const initialStock = data.current_stock
+    const product = productsRepository.create({
+      ...data,
+      current_stock: 0
+    })
+    
     historyRepository.log(product.company_id, 'CREATE', 'products', product.id, user.id, product)
 
-    // 2. Create expiry lots if provided
+    // 2. Create initial stock movement if > 0
+    if (initialStock > 0) {
+      const { movementsRepository } = require('@/repositories/movementsRepository')
+      movementsRepository.create({
+        company_id: product.company_id,
+        product_id: product.id,
+        type: 'entry',
+        quantity: initialStock,
+        user_id: user.id,
+        reason: 'Stock inicial na criação do produto'
+      })
+    }
+
+    // 3. Create expiry lots if provided
     if (batches && batches.length > 0) {
       const { expiryService } = require('@/features/expiry/services/expiryService')
       for (const batch of batches) {
@@ -64,7 +94,7 @@ export const productsService = {
           company_id: currentProduct.company_id,
           product_id: id,
           type: 'adjustment',
-          quantity: Math.abs(diff),
+          quantity: diff,
           user_id: user.id,
           reason: `Ajuste manual de stock (${diff > 0 ? '+' : ''}${diff})`
         })

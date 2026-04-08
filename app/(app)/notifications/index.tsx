@@ -1,107 +1,119 @@
-import React, { useEffect } from 'react'
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
-import Screen from '@/components/layout/Screen'
-import Header from '@/components/layout/Header'
-import Card from '@/components/ui/Card'
-import EmptyState from '@/components/ui/EmptyState'
-import Loading from '@/components/ui/Loading'
-import { CheckCircle2, AlertCircle, Info, Clock } from 'lucide-react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native'
 import { useNotificationStore } from '@/features/notifications/store/notificationStore'
-import formatDistanceToNow from 'date-fns/formatDistanceToNow'
-import pt from 'date-fns/locale/pt'
+import Header from '@/components/layout/Header'
+import Screen from '@/components/layout/Screen'
+import { Bell, AlertTriangle, Info, CheckCircle2, Trash2, Calendar, Package } from 'lucide-react-native'
+import EmptyState from '@/components/ui/EmptyState'
+import { feedback } from '@/utils/haptics'
+import Animated, { FadeInUp } from 'react-native-reanimated'
 
 export default function NotificationsScreen() {
-  const { notifications, isLoading, fetchNotifications, markAllAsRead, markAsRead } = useNotificationStore()
+  const { notifications, isLoading, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore()
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     fetchNotifications()
   }, [])
 
-  const renderItem = ({ item }: { item: any }) => {
-    let icon = <Info size={20} color="#4f46e5" />
-    let colorClass = 'bg-primary/10 dark:bg-primary/20'
-    
-    if (item.type === 'warning') {
-        icon = <AlertCircle size={20} color="#f59e0b" />
-        colorClass = 'bg-amber-50 dark:bg-amber-900/20'
-    } else if (item.type === 'error') {
-        icon = <AlertCircle size={20} color="#ef4444" />
-        colorClass = 'bg-red-50 dark:bg-red-900/20'
-    }
-
-    const timeAgo = formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: pt })
-
-    return (
-      <TouchableOpacity 
-        className="mb-4"
-        onPress={() => item.is_read === 0 && markAsRead(item.id)}
-      >
-        <Card 
-          variant={item.is_read ? 'premium' : 'elevated'} 
-          className={`p-5 flex-row items-start ${item.is_read ? 'opacity-70' : ''}`}
-        >
-          <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${colorClass} shadow-premium-sm`}>
-             {icon}
-          </View>
-          
-          <View className="flex-1">
-            <View className="flex-row justify-between items-center mb-1.5">
-              <Text style={{ fontFamily: 'Inter-Bold' }} className={`text-base font-bold ${item.is_read ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>
-                {item.title}
-              </Text>
-              {!item.is_read && <View className="w-2.5 h-2.5 rounded-full bg-primary shadow-sm" />}
-            </View>
-            
-            <Text className={`text-[13px] leading-5 mb-3 font-medium ${item.is_read ? 'text-slate-400' : 'text-slate-600 dark:text-slate-300'}`}>
-               {item.message}
-            </Text>
-            
-            <View className="flex-row items-center bg-slate-50 dark:bg-white/5 self-start px-2 py-1 rounded-lg">
-               <Clock size={10} color="#94a3b8" />
-               <Text className="text-[9px] font-black text-slate-400 ml-1.5 uppercase tracking-tighter">{timeAgo}</Text>
-            </View>
-          </View>
-        </Card>
-      </TouchableOpacity>
-    )
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await fetchNotifications()
+    setRefreshing(false)
   }
 
-  if (isLoading && notifications.length === 0) {
-    return (
-      <Screen padHorizontal={false} withHeader>
-        <Loading fullScreen message="A carregar notificações..." />
-      </Screen>
-    )
+  const handleMarkAllRead = () => {
+    feedback.success()
+    markAllAsRead()
+  }
+
+  const renderIcon = (type: string) => {
+    switch (type) {
+      case 'warning':
+        return <AlertTriangle size={20} color="#f59e0b" />
+      case 'error':
+        return <AlertTriangle size={20} color="#ef4444" />
+      case 'info':
+        return <Info size={20} color="#3b82f6" />
+      case 'success':
+        return <CheckCircle2 size={20} color="#10b981" />
+      default:
+        return <Bell size={20} color="#64748b" />
+    }
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900" withHeader>
+    <Screen className="bg-slate-50 dark:bg-[#0b0f1a]">
       <Header 
         title="Notificações" 
         rightElement={
           notifications.some(n => n.is_read === 0) ? (
-            <TouchableOpacity 
-              onPress={markAllAsRead} 
-              className="px-4 py-2 bg-white/10 rounded-2xl border border-white/20"
-            >
-              <Text className="text-white text-[10px] font-black uppercase tracking-widest">Marcar como Lidas</Text>
+            <TouchableOpacity onPress={handleMarkAllRead} className="bg-white/10 px-4 py-2 rounded-xl">
+              <Text className="text-white text-xs font-bold font-black">Ler Tudo</Text>
             </TouchableOpacity>
           ) : null
         }
       />
 
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerClassName="px-6 pt-6 pb-20"
-        ListEmptyComponent={
-          <EmptyState 
-            title="Tudo Limpo!"
-            description="Não tem notificações novas de momento."
-          />
-        }
-      />
+      <View className="flex-1 px-4">
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4f46e5" />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<Bell size={48} color="#94a3b8" />}
+              title="Sem notificações"
+              description="Você está em dia! Nada por aqui no momento."
+            />
+          }
+          renderItem={({ item, index }) => (
+            <Animated.View entering={FadeInUp.delay(index * 50)}>
+              <TouchableOpacity
+                onPress={() => markAsRead(item.id)}
+                disabled={item.is_read === 1}
+                className={`p-4 rounded-3xl mb-3 flex-row border shadow-premium-sm ${
+                  item.is_read === 0 
+                    ? 'bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-500/20' 
+                    : 'bg-slate-50/50 dark:bg-slate-950/30 border-transparent opacity-70'
+                }`}
+              >
+                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${
+                  item.is_read === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-slate-100 dark:bg-slate-800'
+                }`}>
+                  {renderIcon(item.type)}
+                </View>
+
+                <View className="flex-1">
+                  <View className="flex-row justify-between items-start mb-1">
+                    <Text 
+                      style={{ fontFamily: 'Inter-Black' }}
+                      className={`font-black text-sm flex-1 mr-2 ${item.is_read === 0 ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                    >
+                      {item.title}
+                    </Text>
+                    {item.is_read === 0 && <View className="w-2 h-2 rounded-full bg-indigo-500 mt-1" />}
+                  </View>
+                  
+                  <Text className={`text-xs mb-2 leading-relaxed ${item.is_read === 0 ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500 dark:text-slate-500'}`}>
+                    {item.message}
+                  </Text>
+
+                  <View className="flex-row items-center">
+                    <Calendar size={12} color="#94a3b8" />
+                    <Text className="text-[10px] text-slate-400 ml-1">
+                      {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString().slice(0, 5)}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 40 }}
+        />
+      </View>
     </Screen>
   )
 }

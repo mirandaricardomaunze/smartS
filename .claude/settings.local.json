@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"Disponível brevemente\\\\|disponível brevemente\\\\|em breve\\\\|coming soon\\\\|TODO\\\\|FIXME\\\\|WIP\" /c/Users/miran/Desktop/SmartS/app --include=*.tsx --include=*.ts)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

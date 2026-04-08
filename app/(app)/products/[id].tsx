@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, Alert, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
+import { useLocalSearchParams, router } from 'expo-router'
+
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { hasPermission } from '@/utils/permissions'
@@ -14,6 +15,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { feedback } from '@/utils/haptics'
 import { useToastStore } from '@/store/useToastStore'
 import { useSettings } from '@/features/settings/hooks/useSettings'
+import { useConfirmStore } from '@/store/useConfirmStore'
 import FormField from '@/components/forms/FormField'
 import DatePicker from '@/components/ui/DatePicker'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -28,7 +30,8 @@ import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated'
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
+
+
   const { products, isLoading: productsLoading, deleteProduct } = useProducts()
   const { lots, isLoading: expiryLoading, createLot } = useExpiry(id)
   const { user } = useAuthStore()
@@ -92,27 +95,32 @@ export default function ProductDetailScreen() {
 
   const handleDelete = () => {
     feedback.warning()
-    Alert.alert('Confirmar Eliminação', 'Deseja apagar este produto permanentemente? Esta ação não pode ser desfeita.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { 
-        text: 'Apagar', 
-        style: 'destructive',
-        onPress: async () => {
-          setIsDeleting(true)
-          try {
-            await deleteProduct(product.id)
-            feedback.success()
-            showToast('Produto removido', 'success')
-            router.back()
-          } catch (e: any) {
-            feedback.error()
-            showToast('Erro ao remover produto', 'error')
-            Alert.alert('Erro', e.message)
-            setIsDeleting(false)
-          }
+    useConfirmStore.getState().show({
+      title: 'Confirmar Eliminação',
+      message: 'Deseja apagar este produto permanentemente? Esta ação não pode ser desfeita.',
+      confirmLabel: 'Apagar',
+      isDestructive: true,
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          await deleteProduct(product.id)
+          feedback.success()
+          showToast('Produto removido', 'success')
+          router.back()
+        } catch (e: any) {
+          feedback.error()
+          showToast('Erro ao remover produto', 'error')
+          useConfirmStore.getState().show({
+            title: 'Erro',
+            message: e.message,
+            confirmLabel: 'OK',
+            showCancel: false,
+            onConfirm: () => {}
+          })
+          setIsDeleting(false)
         }
       }
-    ])
+    })
   }
 
   const InfoRow = ({ icon, label, value, last = false }: any) => (
@@ -130,7 +138,7 @@ export default function ProductDetailScreen() {
   const isLowStock = product.current_stock <= product.minimum_stock
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Detalhes do Item" showBack />
       
       <ScrollView className="flex-1" contentContainerClassName="px-6 pb-12">
@@ -283,14 +291,20 @@ export default function ProductDetailScreen() {
                onPress={() => setModalVisible(true)}
              />
            )}
-           <Button
-             title="Movimentos"
-             variant="secondary"
-             fullWidth={false}
-             className="flex-1 ml-2"
-             icon={<ArrowRightLeft size={20} color="white" />}
-             onPress={() => {}}
-           />
+            <Button
+              title="Movimentos"
+              variant="secondary"
+              fullWidth={false}
+              className="flex-1 ml-2"
+              icon={<ArrowRightLeft size={20} color="white" />}
+              onPress={() => {
+                feedback.light()
+                router.push({
+                  pathname: '/(app)/movements',
+                  params: { product_id: id }
+                })
+              }}
+            />
         </Animated.View>
 
         {canDelete && (
@@ -322,7 +336,7 @@ export default function ProductDetailScreen() {
         onClose={() => setLotModalVisible(false)} 
         height={0.7}
       >
-        <View className="flex-1 bg-white dark:bg-slate-950 px-6 pt-4 pb-8">
+        <View className="flex-1 bg-white dark:bg-[#0f172a] px-6 pt-4 pb-8">
            <View className="flex-row justify-between items-center mb-8">
              <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">Registar Lote</Text>
              <TouchableOpacity 

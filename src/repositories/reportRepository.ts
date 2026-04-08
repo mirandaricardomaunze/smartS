@@ -64,14 +64,14 @@ export const reportRepository = {
       `SELECT 
         SUM(CASE WHEN type = 'entry' THEN quantity ELSE 0 END) as total_entries,
         SUM(CASE WHEN type = 'exit' THEN quantity ELSE 0 END) as total_exits
-       FROM movements 
+       FROM stock_movements 
        WHERE company_id = ? AND created_at >= date('now', '-' || ? || ' days')`,
       [companyId, days]
     )
 
     const topMoved = db.getAllSync<any>(
       `SELECT p.name, SUM(m.quantity) as total_qty
-       FROM movements m
+       FROM stock_movements m
        JOIN products p ON m.product_id = p.id
        WHERE m.company_id = ? AND m.created_at >= date('now', '-' || ? || ' days')
        GROUP BY m.product_id
@@ -82,7 +82,7 @@ export const reportRepository = {
 
     const byDay = db.getAllSync<any>(
       `SELECT date(created_at) as date, COUNT(*) as count
-       FROM movements
+       FROM stock_movements
        WHERE company_id = ? AND created_at >= date('now', '-' || ? || ' days')
        GROUP BY date(created_at)
        ORDER BY date ASC`,

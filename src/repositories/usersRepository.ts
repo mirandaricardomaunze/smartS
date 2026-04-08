@@ -66,4 +66,20 @@ export const usersRepository = {
     db.runSync('UPDATE users SET is_active=0, synced=0, updated_at=? WHERE id=? AND company_id=?', [updated_at, id, companyId])
     addToSyncQueue('users', 'UPDATE', { id, company_id: companyId, is_active: 0, updated_at })
   },
+  updateGlobal(id: string, data: Partial<User>): void {
+    const updated = { ...data, updated_at: new Date().toISOString(), synced: 0 }
+    const fields = Object.keys(updated).filter(key => key !== 'id')
+    const setClause = fields.map(key => `${key} = ?`).join(', ')
+    const values = fields.map(key => (updated as any)[key])
+    
+    db.runSync(
+      `UPDATE users SET ${setClause} WHERE id = ?`,
+      [...values, id]
+    )
+    
+    const current = db.getFirstSync<User>('SELECT * FROM users WHERE id = ?', [id])
+    if (current) {
+      addToSyncQueue('users', 'UPDATE', current)
+    }
+  },
 }

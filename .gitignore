@@ -24,12 +24,13 @@ local.properties
 *.aab
 *.ipa
 
-# Environment variables
+# Environment variables (NUNCA commitar chaves reais)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+# .env.example é seguro para commitar (contém apenas placeholders)
 
 # Databases
 *.db
@@ -46,8 +47,17 @@ yarn-error.log*
 # User temporary scratch files
 output.txt
 ts_errors*.txt
+tsc_output*.txt
+tsc_check.txt
+tsc_final.txt
+tsc_latest.txt
+tsc_out.txt
+errors.log
 fix.js
 fix.py
 prompt.md
 test-config.js
 test-requires.js
+missing_tables_schema.sql
+supabase_schema.sql
+professional_supabase_schema.sql

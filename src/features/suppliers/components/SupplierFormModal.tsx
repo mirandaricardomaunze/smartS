@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native'
+import { useCountryConfig } from '@/hooks/useCountryConfig'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { Supplier } from '@/types'
 import { useCompanyStore } from '@/store/companyStore'
-import { X, Building2, User, Mail, Phone, MapPin, CreditCard } from 'lucide-react-native'
+import { X, Building2, User, Mail, Phone, MapPin, CreditCard, Save, Edit2 } from 'lucide-react-native'
 
 interface SupplierFormModalProps {
   visible: boolean
@@ -16,15 +17,41 @@ interface SupplierFormModalProps {
 
 export default function SupplierFormModal({ visible, onClose, onSubmit, initialData }: SupplierFormModalProps) {
   const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
+  const countryConfig = useCountryConfig()
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    contact_name: initialData?.contact_name || '',
-    email: initialData?.email || '',
-    phone: initialData?.phone || '',
-    address: initialData?.address || '',
-    nif: initialData?.nif || ''
+    name: '',
+    contact_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    nif: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Sync state with initialData when it changes or modal opens
+  React.useEffect(() => {
+    if (visible) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name,
+          contact_name: initialData.contact_name || '',
+          email: initialData.email || '',
+          phone: initialData.phone || '',
+          address: initialData.address || '',
+          nif: initialData.nif || ''
+        })
+      } else {
+        setFormData({
+          name: '',
+          contact_name: '',
+          email: '',
+          phone: '',
+          address: '',
+          nif: ''
+        })
+      }
+    }
+  }, [visible, initialData])
 
   const handleSave = async () => {
     if (!formData.name) return
@@ -90,7 +117,7 @@ export default function SupplierFormModal({ visible, onClose, onSubmit, initialD
           />
 
           <Input
-            label="Contribuinte (NIF / NUIT)"
+            label={`Contribuinte (${countryConfig.tax.taxIdLabel})`}
             placeholder="Ex: 500000000"
             value={formData.nif}
             onChangeText={(text) => setFormData(p => ({ ...p, nif: text }))}
@@ -117,7 +144,8 @@ export default function SupplierFormModal({ visible, onClose, onSubmit, initialD
             title={initialData ? "Atualizar" : "Criar Fornecedor"}
             onPress={handleSave}
             isLoading={isSubmitting}
-            className="h-14 rounded-2xl shadow-lg shadow-primary/30"
+            icon={initialData ? <Edit2 size={20} color="white" /> : <Building2 size={20} color="white" />}
+            className="shadow-lg shadow-primary/30"
           />
         </View>
       </View>

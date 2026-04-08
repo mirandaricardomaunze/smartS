@@ -1,10 +1,8 @@
 import React from 'react'
-import { View, Text, StyleSheet, Dimensions } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import Animated, { FadeInUp, FadeOutUp, Layout } from 'react-native-reanimated'
 import { useToastStore, ToastType } from '@/store/useToastStore'
 import { CheckCircle2, AlertCircle, Info, XCircle } from 'lucide-react-native'
-
-const { width } = Dimensions.get('window')
 
 const getToastConfig = (type: ToastType) => {
   switch (type) {

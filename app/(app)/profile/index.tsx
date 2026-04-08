@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
 import { useAuthStore } from '@/features/auth/store/authStore'
+import { useConfirmStore } from '@/store/useConfirmStore'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import Card from '@/components/ui/Card'
@@ -134,7 +135,15 @@ export default function ProfileScreen() {
           />
           
           <TouchableOpacity 
-            onPress={logout}
+            onPress={() => {
+              useConfirmStore.getState().show({
+                title: 'Terminar Sessão',
+                message: 'Tens a certeza que desejas sair da tua conta?',
+                confirmLabel: 'Sair Agora',
+                isDestructive: true,
+                onConfirm: logout
+              })
+            }}
             className="flex-row items-center justify-center p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30"
           >
             <LogOut size={20} color="#ef4444" className="mr-2" />

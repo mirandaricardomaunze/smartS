@@ -9,6 +9,7 @@ import FormError from '@/components/forms/FormError'
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Card from '@/components/ui/Card'
+import BackButton from '@/components/ui/BackButton'
 import { feedback } from '@/utils/haptics'
 import { useToastStore } from '@/store/useToastStore'
 import { StatusBar } from 'expo-status-bar'
@@ -58,14 +59,9 @@ export default function ForgotPasswordScreen() {
       >
         <Screen className="bg-transparent" noSafeTop noSafeBottom>
           <View className="flex-1 justify-center px-6">
-            <TouchableOpacity 
-               onPress={() => router.back()}
-               className="absolute top-16 left-6 w-10 h-10 items-center justify-center bg-white/10 rounded-full"
-            >
-               <ArrowLeft size={20} color="white" />
-            </TouchableOpacity>
+            <BackButton variant="glass" className="absolute top-16 left-6 z-10" />
 
-            <Card variant="glass" glassIntensity={15} className="w-full max-w-sm self-center p-8 border-white/20 shadow-premium-lg">
+            <Card variant="glass" glassIntensity={15} className="w-full max-w-[440px] self-center p-6 border-white/20 shadow-premium-lg">
               {sent ? (
                 <View className="items-center py-4">
                   <View className="w-20 h-20 bg-emerald-500/20 rounded-full items-center justify-center mb-6 border border-emerald-500/30">

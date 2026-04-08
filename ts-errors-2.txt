@@ -1,0 +1,80 @@
+﻿src/__tests__/services/financialService.test.ts(43,42): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/financialService.test.ts(44,52): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/financialService.test.ts(61,42): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/financialService.test.ts(62,52): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/financialService.test.ts(70,42): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/financialService.test.ts(71,52): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(132,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(150,44): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(151,46): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(181,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(186,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(194,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(196,42): error TS2345: Argument of type '{ id: string; order_id: string; product_id: string; quantity: number; unit_price: number; tax_rate: number; total: number; name: string; reference: null; }' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(196,44): error TS2783: 'id' is specified more than once, so this usage will be overwritten.
+src/__tests__/services/orderService.test.ts(213,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(218,30): error TS2345: Argument of type '{ id: string; product_id: string; quantity: number; }' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(219,30): error TS2345: Argument of type 'Error' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(220,26): error TS2345: Argument of type '{ id: string; product_id: string; quantity: number; }' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(242,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(249,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(252,52): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(270,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(275,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(277,50): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(289,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(291,42): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(292,50): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(304,43): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'Order'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'OrderStatus'.
+src/__tests__/services/orderService.test.ts(306,50): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(309,52): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(322,44): error TS2345: Argument of type '{ id: string; company_id: string; customer_id: string; user_id: string; number: string; status: string; total_amount: number; discount: number; tax_amount: number; notes: null; created_at: string; updated_at: string; synced: 0 | 1; customer_name: string; }' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(323,42): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/__tests__/services/orderService.test.ts(324,46): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+supabase/functions/billing-portal/index.ts(8,20): error TS2307: Cannot find module 'https://esm.sh/stripe@14?target=deno' or its corresponding type declarations.
+supabase/functions/billing-portal/index.ts(9,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2?target=deno' or its corresponding type declarations.
+supabase/functions/billing-portal/index.ts(11,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/billing-portal/index.ts(16,1): error TS2304: Cannot find name 'Deno'.
+supabase/functions/billing-portal/index.ts(35,7): error TS2304: Cannot find name 'Deno'.
+supabase/functions/billing-portal/index.ts(36,7): error TS2304: Cannot find name 'Deno'.
+supabase/functions/billing-portal/index.ts(72,36): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(10,20): error TS2307: Cannot find module 'https://esm.sh/stripe@14?target=deno' or its corresponding type declarations.
+supabase/functions/create-checkout/index.ts(11,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2?target=deno' or its corresponding type declarations.
+supabase/functions/create-checkout/index.ts(13,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(20,10): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(21,10): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(22,10): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(25,1): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(43,7): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(44,7): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(111,38): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-checkout/index.ts(112,36): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(16,20): error TS2307: Cannot find module 'https://esm.sh/stripe@14?target=deno' or its corresponding type declarations.
+supabase/functions/stripe-webhook/index.ts(17,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2?target=deno' or its corresponding type declarations.
+supabase/functions/stripe-webhook/index.ts(19,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(25,3): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(26,3): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(29,1): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(35,25): error TS2304: Cannot find name 'Deno'.

@@ -4,8 +4,8 @@ import { useCompanyStore } from '@/store/companyStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export function useAutoAlerts() {
-  const { activeCompanyId } = useCompanyStore();
-  const { user } = useAuthStore();
+  const activeCompanyId = useCompanyStore(state => state.activeCompanyId);
+const user = useAuthStore(state => state.user);
 
   useEffect(() => {
     if (!activeCompanyId || !user) return;

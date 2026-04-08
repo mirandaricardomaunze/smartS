@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, FlatList, TextInput, Image } from 'react-native'
 import React, { useState } from 'react'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
+
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import { 
@@ -13,6 +14,8 @@ import {
   Edit2
 } from 'lucide-react-native'
 import Card from '@/components/ui/Card'
+import Input from '@/components/ui/Input'
+import IconButton from '@/components/ui/IconButton'
 import Loading from '@/components/ui/Loading'
 import EmptyState from '@/components/ui/EmptyState'
 import { useEmployees } from '@/features/hr/hooks/useEmployees'
@@ -20,8 +23,15 @@ import { Employee } from '@/features/hr/types'
 import { feedback } from '@/utils/haptics'
 import EmployeeFormModal from '@/features/hr/components/EmployeeFormModal'
 
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  permanent: 'Efectivo',
+  'fixed-term': 'A Prazo',
+  probation: 'Período de Experiência',
+}
+
 export default function EmployeesScreen() {
-  const router = useRouter()
+
+
   const [search, setSearch] = useState('')
   const { employees, isLoading, createEmployee, updateEmployee } = useEmployees()
   
@@ -82,7 +92,7 @@ export default function EmployeesScreen() {
             </Text>
             <View className="flex-row items-center mt-1">
               <Text className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-tight">
-                {item.position || 'Sem Cargo'} • {item.employment_type}
+                {item.position || 'Sem Cargo'} • {EMPLOYMENT_TYPE_LABELS[item.employment_type] ?? item.employment_type}
               </Text>
             </View>
           </View>
@@ -99,31 +109,34 @@ export default function EmployeesScreen() {
   )
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Funcionários" />
 
-      {/* Search Bar */}
-      <View className="px-6 py-4 flex-row space-x-2">
-        <View className="flex-1 bg-white dark:bg-white/5 rounded-2xl flex-row items-center px-4 border border-slate-100 dark:border-white/10 h-14">
-          <Search size={20} color="#94a3b8" />
-          <TextInput
-            className="flex-1 ml-3 text-slate-900 dark:text-white font-medium"
+      {/* Search & Filter Bar */}
+      <View className="px-6 mt-4 flex-row items-center space-x-2">
+        <View className="flex-1">
+          <Input
             placeholder="Pesquisar por nome ou cargo..."
-            placeholderTextColor="#94a3b8"
             value={search}
             onChangeText={setSearch}
+            icon={<Search size={20} color="#94a3b8" />}
+            className="mb-0 bg-white dark:bg-slate-900/50"
           />
         </View>
-        <TouchableOpacity className="w-14 h-14 bg-white dark:bg-white/5 rounded-2xl items-center justify-center border border-slate-100 dark:border-white/10">
-          <Filter size={20} color="#64748b" />
-        </TouchableOpacity>
+        <IconButton 
+          icon={Filter} 
+          variant="outline" 
+          size="lg" 
+          className="rounded-2xl border-slate-100 dark:border-white/10"
+          onPress={() => feedback.light()}
+        />
       </View>
 
       <FlatList
         data={filteredEmployees}
         renderItem={renderEmployee}
         keyExtractor={item => item.id}
-        contentContainerClassName="px-6 pb-32"
+        contentContainerClassName="px-6 pt-4 pb-32"
         ListEmptyComponent={
           isLoading ? (
             <Loading message="A carregar funcionários..." />
@@ -136,13 +149,17 @@ export default function EmployeesScreen() {
         }
       />
 
-      {/* FAB */}
-      <TouchableOpacity 
-        className="absolute bottom-8 right-6 w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-premium-lg"
-        onPress={handleAdd}
-      >
-        <Plus size={28} color="white" />
-      </TouchableOpacity>
+      {/* Standardized FAB */}
+      <View className="absolute bottom-10 right-6 shadow-premium-lg">
+        <IconButton 
+          icon={Plus} 
+          variant="primary" 
+          size="lg" 
+          onPress={handleAdd}
+          iconSize={28}
+          className="rounded-2xl"
+        />
+      </View>
 
       <EmployeeFormModal
         visible={modalVisible}

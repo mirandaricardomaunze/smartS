@@ -1,0 +1,61 @@
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+port = 54321
+site_url = "http://localhost:8081"
+additional_redirect_urls = [
+  "smarts://",
+  "smarts://payment/success",
+  "smarts://payment/cancel",
+  "smarts://reset-password",
+  "exp://localhost:8081"
+]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret    = "env(GOOGLE_CLIENT_SECRET)"
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+# Segredos necessários (definir com: supabase secrets set KEY=valor)
+# STRIPE_SECRET_KEY        — chave secreta do Stripe (sk_live_... / sk_test_...)
+# STRIPE_WEBHOOK_SECRET    — segredo do webhook Stripe (whsec_...)
+# STRIPE_PRICE_BASIC       — ID do Price no Stripe para o plano BASIC
+# STRIPE_PRICE_PRO         — ID do Price no Stripe para o plano PRO
+# STRIPE_PRICE_ELITE       — ID do Price no Stripe para o plano ELITE
+# GOOGLE_CLIENT_ID         — OAuth Google (para auth.external.google)
+# GOOGLE_CLIENT_SECRET     — OAuth Google

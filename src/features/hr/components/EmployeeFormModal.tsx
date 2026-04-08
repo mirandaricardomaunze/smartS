@@ -1,5 +1,6 @@
-import { View, Text, ScrollView, TouchableOpacity, useColorScheme, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native'
 import React, { useState, useEffect } from 'react'
+import { useCountryConfig } from '@/hooks/useCountryConfig'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -15,7 +16,8 @@ import {
   Camera,
   Heart,
   Globe,
-  Settings
+  Settings,
+  Edit2
 } from 'lucide-react-native'
 import { useDepartments } from '../hooks/useDepartments'
 import { usePositions } from '../hooks/usePositions'
@@ -23,6 +25,7 @@ import { Employee, EmploymentType } from '../types'
 import Select from '@/components/ui/Select'
 import * as ImagePicker from 'expo-image-picker'
 import { feedback } from '@/utils/haptics'
+import { useConfirmStore } from '@/store/useConfirmStore'
 
 interface EmployeeFormModalProps {
   visible: boolean
@@ -37,6 +40,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
   
   const { departments } = useDepartments()
   const { positions } = usePositions()
+  const countryConfig = useCountryConfig()
 
   const [form, setForm] = useState({
     name: '',
@@ -48,7 +52,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
     position_id: '',
     department_id: '',
     employment_type: 'permanent' as EmploymentType,
-    nacionality: 'Moçambicana',
+    nacionality: '',
     civil_status: 'Solteiro(a)',
     emergency_contact: '',
     bank_name: '',
@@ -70,7 +74,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
         position_id: initialData.position_id || '',
         department_id: '', // Would need to find based on position
         employment_type: initialData.employment_type || 'permanent',
-        nacionality: initialData.nacionality || 'Moçambicana',
+        nacionality: initialData.nacionality || '',
         civil_status: initialData.civil_status || 'Solteiro(a)',
         emergency_contact: initialData.emergency_contact || '',
         bank_name: initialData.bank_name || '',
@@ -89,7 +93,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
         position_id: '',
         department_id: '',
         employment_type: 'permanent',
-        nacionality: 'Moçambicana',
+        nacionality: '',
         civil_status: 'Solteiro(a)',
         emergency_contact: '',
         bank_name: '',
@@ -116,7 +120,13 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
 
   const handleSubmit = () => {
     if (!form.name || !form.position_id) {
-      Alert.alert('Erro', 'Nome e Cargo são obrigatórios')
+      useConfirmStore.getState().show({
+        title: 'Erro',
+        message: 'Nome e Cargo são obrigatórios',
+        confirmLabel: 'OK',
+        showCancel: false,
+        onConfirm: () => {}
+      })
       return
     }
     const contacts = JSON.stringify({ phone: form.phone, email: form.email })
@@ -182,7 +192,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
                   value={form.nacionality}
                   onValueChange={v => setForm(f => ({ ...f, nacionality: v }))}
                   options={[
-                    { label: 'Moçambicana', value: 'Moçambicana' },
+                    { label: 'Nacional', value: 'Nacional' },
                     { label: 'Estrangeira', value: 'Estrangeira' }
                   ]}
                 />
@@ -213,7 +223,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
             </View>
             <View className="flex-1">
               <Input
-                label="NUIT"
+                label={countryConfig.tax.taxIdLabel}
                 placeholder="123456789"
                 value={form.nit}
                 onChangeText={t => setForm(f => ({ ...f, nit: t }))}
@@ -228,7 +238,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
 
           <Input
             label="Telefone Principal"
-            placeholder="+258 8x xxx xxxx"
+            placeholder="+000 000 000 000"
             value={form.phone}
             onChangeText={t => setForm(f => ({ ...f, phone: t }))}
             keyboardType="phone-pad"
@@ -292,7 +302,7 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
 
           <Input
             label="Banco"
-            placeholder="Ex: Millennium BIM"
+            placeholder="Ex: Banco Comercial"
             value={form.bank_name}
             onChangeText={t => setForm(f => ({ ...f, bank_name: t }))}
             icon={<Building2 size={18} color="#94a3b8" />}
@@ -322,8 +332,11 @@ export default function EmployeeFormModal({ visible, onClose, onSubmit, initialD
           <View className="mt-8 mb-10">
             <Button
               title={initialData ? "Actualizar Funcionário" : "Registar Funcionário"}
-              variant="primary"
+              variant="gradient"
+              gradientColors={['#4f46e5', '#4338ca']}
               onPress={handleSubmit}
+              icon={initialData ? <Edit2 size={18} color="white" /> : <User size={18} color="white" />}
+              className="shadow-lg shadow-primary/30"
             />
           </View>
         </ScrollView>

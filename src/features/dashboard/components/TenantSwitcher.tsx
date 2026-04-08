@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
+import { useCountryConfig } from '@/hooks/useCountryConfig'
 import { useCompanyStore } from '@/store/companyStore'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Building2, Check, Plus, Globe, X } from 'lucide-react-native'
@@ -14,6 +15,7 @@ interface TenantSwitcherProps {
 
 export default function TenantSwitcher({ visible, onClose }: TenantSwitcherProps) {
   const { companies, activeCompanyId, setActiveCompany, createCompany } = useCompany()
+  const countryConfig = useCountryConfig()
   const [formVisible, setFormVisible] = React.useState(false)
 
   const handleSelect = (id: string) => {
@@ -29,7 +31,7 @@ export default function TenantSwitcher({ visible, onClose }: TenantSwitcherProps
 
   return (
     <>
-      <BottomSheet visible={visible} onClose={onClose} height={0.5}>
+      <BottomSheet visible={visible} onClose={onClose} height={0.85}>
         <View className="flex-1 bg-white dark:bg-slate-950 px-6 pt-2 pb-8">
           <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row items-center">
@@ -64,7 +66,9 @@ export default function TenantSwitcher({ visible, onClose }: TenantSwitcherProps
                       <Text style={{ fontFamily: 'Inter-Bold' }} className={`text-base font-bold ${activeCompanyId === company.id ? 'text-primary dark:text-primary-dark' : 'text-slate-700 dark:text-slate-200'}`}>
                         {company.name}
                       </Text>
-                      <Text className="text-xs text-slate-500">{company.nif || 'Sem NIF / NUIT'}</Text>
+                      <Text className="text-xs text-slate-500">
+                        {company.nif || `Sem ${countryConfig.tax.taxIdLabel}`}
+                      </Text>
                     </View>
                   </View>
                   {activeCompanyId === company.id && <Check size={20} color="#4f46e5" />}

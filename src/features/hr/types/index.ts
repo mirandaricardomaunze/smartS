@@ -3,7 +3,7 @@ import { BaseEntity } from '@/types'
 export type EmploymentType = 'permanent' | 'fixed-term' | 'probation'
 export type EmployeeStatus = 'active' | 'suspended' | 'terminated'
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'justified'
-export type LeaveType = 'vacation' | 'sick' | 'maternity' | 'paternity' | 'other'
+export type LeaveType = 'vacation' | 'sick' | 'maternity' | 'paternity' | 'unpaid' | 'bereavement' | 'other'
 export type LeaveStatus = 'pending' | 'approved' | 'rejected'
 export type PayrollStatus = 'draft' | 'paid' | 'cancelled' | 'processed'
 

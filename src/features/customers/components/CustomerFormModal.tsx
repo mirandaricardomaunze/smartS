@@ -6,7 +6,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { Customer } from '@/types'
 import { useCompanyStore } from '@/store/companyStore'
-import { X, User, Mail, Phone, MapPin, CreditCard } from 'lucide-react-native'
+import { X, User, Mail, Phone, MapPin, CreditCard, UserPlus, Save, Edit2 } from 'lucide-react-native'
 
 interface CustomerFormModalProps {
   visible: boolean
@@ -18,13 +18,36 @@ interface CustomerFormModalProps {
 export default function CustomerFormModal({ visible, onClose, onSubmit, initialData }: CustomerFormModalProps) {
   const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    email: initialData?.email || '',
-    phone: initialData?.phone || '',
-    address: initialData?.address || '',
-    nif: initialData?.nif || ''
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    nif: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Sync state with initialData when it changes or modal opens
+  React.useEffect(() => {
+    if (visible) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name,
+          email: initialData.email || '',
+          phone: initialData.phone || '',
+          address: initialData.address || '',
+          nif: initialData.nif || ''
+        })
+      } else {
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          nif: ''
+        })
+      }
+    }
+  }, [visible, initialData])
 
   const handleSave = async () => {
     if (!formData.name) {
@@ -112,7 +135,8 @@ export default function CustomerFormModal({ visible, onClose, onSubmit, initialD
             title={initialData ? "Atualizar" : "Criar Cliente"}
             onPress={handleSave}
             isLoading={isSubmitting}
-            className="h-14 rounded-2xl shadow-lg shadow-primary/30"
+            icon={initialData ? <Edit2 size={20} color="white" /> : <UserPlus size={20} color="white" />}
+            className="shadow-lg shadow-primary/30"
           />
         </View>
       </View>

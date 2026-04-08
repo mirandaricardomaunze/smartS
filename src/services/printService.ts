@@ -1,5 +1,6 @@
 import { Order, OrderItem, Company } from '@/types'
 import { formatDate } from '@/utils/formatters'
+import { logger } from '@/utils/logger'
 
 export const printService = {
   /**
@@ -53,9 +54,9 @@ export const printService = {
    * Simulates printing by logging to console
    */
   print: async (text: string) => {
-    console.log('--- THERMAL PRINT OUTPUT ---')
-    console.log(text)
-    console.log('----------------------------')
+    logger.debug('--- THERMAL PRINT OUTPUT ---')
+    logger.debug(text)
+    logger.debug('----------------------------')
     return true
   }
 }

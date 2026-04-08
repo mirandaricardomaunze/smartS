@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native'
-import { X, UserPlus, Shield, User, Mail, Lock, ShieldCheck, ShieldAlert } from 'lucide-react-native'
+import { X, UserPlus, Shield, User, Mail, Lock, ShieldCheck, ShieldAlert, Edit2 } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { UserRole } from '@/types'
@@ -12,12 +12,14 @@ interface UserFormModalProps {
   visible: boolean
   onClose: () => void
   onSave: (data: any, password?: string) => Promise<void>
+  initialData?: any
 }
 
 export default function UserFormModal({ 
   visible, 
   onClose, 
-  onSave 
+  onSave,
+  initialData
 }: UserFormModalProps) {
   const showToast = useToastStore((state) => state.show)
   
@@ -32,18 +34,27 @@ export default function UserFormModal({
 
   useEffect(() => {
     if (visible) {
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        role: 'operator',
-      })
+      if (initialData) {
+        setFormData({
+          name: initialData.name || '',
+          email: initialData.email || '',
+          password: '', // Password stays empty unless changing
+          role: initialData.role || 'operator',
+        })
+      } else {
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          role: 'operator',
+        })
+      }
     }
-  }, [visible])
+  }, [visible, initialData])
 
   const handleSave = async () => {
-    if (!formData.name || !formData.email || !formData.password) {
-      showToast('Preencha todos os campos obrigatórios', 'warning')
+    if (!formData.name || !formData.email || (!initialData && !formData.password)) {
+      showToast('Preencha os campos obrigatórios', 'warning')
       return
     }
 
@@ -51,19 +62,17 @@ export default function UserFormModal({
       setIsSubmitting(true)
       feedback.medium()
       await onSave({
+        ...initialData,
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        company: null,
-        logo_url: null,
-        is_active: 1
-      }, formData.password)
+      }, formData.password || undefined)
       feedback.success()
-      showToast('Utilizador criado com sucesso', 'success')
+      showToast(initialData ? 'Utilizador atualizado' : 'Utilizador criado com sucesso', 'success')
       onClose()
     } catch (error: any) {
       feedback.error()
-      showToast(error.message || 'Erro ao criar utilizador', 'error')
+      showToast(error.message || (initialData ? 'Erro ao atualizar' : 'Erro ao criar utilizador'), 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -105,7 +114,7 @@ export default function UserFormModal({
           {/* Header */}
           <View className="flex-row justify-between items-center px-6 py-5">
             <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
-              Novo Utilizador
+              {initialData ? 'Editar Utilizador' : 'Novo Utilizador'}
             </Text>
             <TouchableOpacity 
               onPress={onClose}
@@ -161,14 +170,14 @@ export default function UserFormModal({
             <View className="h-20" />
           </ScrollView>
 
-          {/* Footer */}
           <View className="px-6 pt-6 pb-12 bg-white dark:bg-slate-950">
             <Button 
               variant="gradient"
               gradientColors={['#4f46e5', '#4338ca']}
-              title="Criar Utilizador" 
+              title={initialData ? 'Atualizar Utilizador' : 'Criar Utilizador'}
               onPress={handleSave}
               isLoading={isSubmitting}
+              icon={initialData ? <Edit2 size={20} color="white" /> : <UserPlus size={20} color="white" />}
               className="h-14 rounded-2xl shadow-lg shadow-primary/30"
             />
           </View>

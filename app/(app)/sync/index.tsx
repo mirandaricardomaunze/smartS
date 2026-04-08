@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { CloudOff, Cloud, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react-native'
+import PlanGate from '@/components/ui/PlanGate'
 
 export default function SyncScreen() {
   const { pendingItems, errorItems, isLoading, lastSync, triggerSync } = useSync()
@@ -14,10 +15,11 @@ export default function SyncScreen() {
   const errorCount = errorItems.length
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900">
-      <Header title="Sincronização" />
+    <PlanGate feature="hasRealtime" requiredPlan="PRO">
+      <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900">
+        <Header title="Sincronização" />
       
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 120 }}>
          <View className="items-center justify-center py-6 mb-4">
              {pendingCount > 0 ? (
                  <View className="items-center">
@@ -73,22 +75,29 @@ export default function SyncScreen() {
                     {errorCount} registo(s) falharam após múltiplas tentativas. 
                  </Text>
 
-                 {errorItems.map((item, idx) => (
-                    <View key={item.id} className={`py-3 ${idx !== 0 ? 'border-t border-red-100 dark:border-red-900/20' : ''}`}>
-                        <View className="flex-row justify-between mb-1">
-                            <Text className="text-[10px] font-black text-red-700 dark:text-red-500 uppercase tracking-widest">
-                                {item.table_name} • {item.action}
-                            </Text>
-                            <Text className="text-[10px] text-red-400 font-bold">Tentativas: {item.retry_count}</Text>
-                        </View>
-                        <Text className="text-xs text-red-600/80 dark:text-red-400/80 font-bold leading-5">
-                            {item.last_error || 'Erro desconhecido'}
-                        </Text>
-                    </View>
-                 ))}
+                 <ScrollView 
+                   style={{ maxHeight: 400 }} 
+                   nestedScrollEnabled 
+                   showsVerticalScrollIndicator
+                 >
+                   {errorItems.map((item, idx) => (
+                      <View key={item.id} className={`py-3 ${idx !== 0 ? 'border-t border-red-100 dark:border-red-900/20' : ''}`}>
+                          <View className="flex-row justify-between mb-1">
+                              <Text className="text-[10px] font-black text-red-700 dark:text-red-500 uppercase tracking-widest">
+                                  {item.table_name} • {item.action}
+                              </Text>
+                              <Text className="text-[10px] text-red-400 font-bold">Tentativas: {item.retry_count}</Text>
+                          </View>
+                          <Text className="text-xs text-red-600/80 dark:text-red-400/80 font-bold leading-5">
+                              {item.last_error || 'Erro desconhecido'}
+                          </Text>
+                      </View>
+                   ))}
+                 </ScrollView>
              </View>
          )}
       </ScrollView>
-    </Screen>
+      </Screen>
+    </PlanGate>
   )
 }

@@ -1,20 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, FlatList } from 'react-native'
-import { X, PackageOpen, ArrowDownLeft, ArrowUpRight, SettingsIcon, Search, ScanLine } from 'lucide-react-native'
+import { X, PackageOpen, ArrowDownLeft, ArrowUpRight, SettingsIcon, Search } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
-import { Product, MovementType } from '@/types'
+import { MovementType, CreateStockMovementData } from '@/types'
 import { feedback } from '@/utils/haptics'
 import { useToastStore } from '@/store/useToastStore'
-import { BlurView } from 'expo-blur'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { useProducts } from '@/features/products/hooks/useProducts'
-import PickerModal from '@/components/ui/PickerModal'
 
 interface MovementFormModalProps {
   visible: boolean
   onClose: () => void
-  onSave: (data: any) => Promise<void>
+  onSave: (data: CreateStockMovementData) => Promise<void>
   initialProductId?: string
 }
 
@@ -29,7 +27,7 @@ export default function MovementFormModal({
   
   const [formData, setFormData] = useState({
     product_id: initialProductId,
-    type: 'entry' as MovementType,
+    type: 'adjustment' as MovementType,
     quantity: '',
     reason: '',
   })
@@ -38,16 +36,17 @@ export default function MovementFormModal({
   const [isProductPickerVisible, setIsProductPickerVisible] = useState(false)
   const [search, setSearch] = useState('')
 
+  // Specialized: load initialProductId when modal opens, but don't loop
   useEffect(() => {
     if (visible) {
       setFormData({
         product_id: initialProductId,
-        type: 'entry',
+        type: 'adjustment',
         quantity: '',
         reason: '',
       })
     }
-  }, [visible, initialProductId])
+  }, [visible])
 
   const selectedProduct = useMemo(() => 
     products.find(p => p.id === formData.product_id), 
@@ -123,7 +122,7 @@ export default function MovementFormModal({
       <BottomSheet
         visible={visible}
         onClose={onClose}
-        height={0.8}
+        height={0.85}
       >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -132,9 +131,14 @@ export default function MovementFormModal({
           <View className="bg-white dark:bg-slate-950 flex-1 overflow-hidden">
             {/* Header */}
             <View className="flex-row justify-between items-center px-6 py-5">
-              <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
-                Novo Movimento
-              </Text>
+              <View>
+                <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
+                  Ajuste de Stock
+                </Text>
+                <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  Correção de Inventário
+                </Text>
+              </View>
               <TouchableOpacity 
                 onPress={onClose}
                 className="w-10 h-10 bg-primary/10 dark:bg-primary/20 rounded-full items-center justify-center border border-primary/20 dark:border-primary/30"
@@ -167,13 +171,26 @@ export default function MovementFormModal({
                 <Search size={20} color="#94a3b8" />
               </TouchableOpacity>
 
+              <View className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/20 mb-6 flex-row items-center">
+                <View className="mr-3">
+                   <SettingsIcon size={16} color="#d97706" />
+                </View>
+                <Text className="text-[10px] text-amber-700 dark:text-amber-400 font-bold flex-1 leading-4">
+                  USE ESTE FORMULÁRIO APENAS PARA AJUSTES E CORREÇÕES. 
+                  PARA VENDAS OU COMPRAS, UTILIZE PEDIDOS OU NOTAS.
+                </Text>
+              </View>
+
               <Text className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Tipo de Operação
               </Text>
-              <View className="flex-row space-x-2 mb-6 gap-2">
+              <View className="flex-row space-x-2 mb-6">
                 <TypeButton type="entry" label="Entrada" icon={ArrowDownLeft} color="emerald" />
+                <View className="mx-1" />
                 <TypeButton type="exit" label="Saída" icon={ArrowUpRight} color="red" />
+                <View className="mx-1" />
                 <TypeButton type="adjustment" label="Ajuste" icon={SettingsIcon} color="amber" />
+                <View className="mx-1" />
                 <TypeButton type="transfer" label="Transfer" icon={ArrowUpRight} color="primary" />
               </View>
 
@@ -190,7 +207,7 @@ export default function MovementFormModal({
               <View className="mb-6">
                 <Input
                   label="Motivo / Observações"
-                  placeholder="Ex: Recebimento de material..."
+                  placeholder="Ex: Quebra, Inventário, etc."
                   value={formData.reason}
                   onChangeText={(v) => setFormData(prev => ({ ...prev, reason: v }))}
                   multiline
@@ -201,22 +218,20 @@ export default function MovementFormModal({
               <View className="h-20" />
             </ScrollView>
 
-            {/* Footer */}
             <View className="px-6 pt-6 pb-12 bg-white dark:bg-slate-950">
               <Button 
                 variant="gradient"
                 gradientColors={['#4f46e5', '#4338ca']}
-                title="Registar Movimento" 
+                title="Registar Ajuste" 
                 onPress={handleSave}
                 isLoading={isSubmitting}
-                className="h-14 rounded-2xl shadow-lg shadow-primary/30"
+                className="shadow-lg shadow-primary/30"
               />
             </View>
           </View>
         </KeyboardAvoidingView>
       </BottomSheet>
 
-      {/* Internal Product Selection Sheet */}
       <BottomSheet
         visible={isProductPickerVisible}
         onClose={() => setIsProductPickerVisible(false)}

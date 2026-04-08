@@ -5,7 +5,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { Category } from '@/types'
 import { useCompanyStore } from '@/store/companyStore'
-import { X, Tag, AlignLeft } from 'lucide-react-native'
+import { X, Tag, AlignLeft, Plus, Save, Edit2 } from 'lucide-react-native'
 
 interface CategoryFormModalProps {
   visible: boolean
@@ -17,24 +17,47 @@ interface CategoryFormModalProps {
 export default function CategoryFormModal({ visible, onClose, onSubmit, initialData }: CategoryFormModalProps) {
   const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    description: initialData?.description || ''
+    name: '',
+    description: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Sync state with initialData when it changes or modal opens
+  React.useEffect(() => {
+    if (visible) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name,
+          description: initialData.description || ''
+        })
+      } else {
+        setFormData({
+          name: '',
+          description: ''
+        })
+      }
+    }
+  }, [visible, initialData])
+
   const handleSave = async () => {
     if (!formData.name) return
+    
+    if (!activeCompanyId) {
+      console.warn('Attempted to save category without activeCompanyId')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       await onSubmit({
         ...formData,
-        company_id: activeCompanyId!
+        company_id: activeCompanyId
       })
-      onClose()
-      // Reset form if success
+      
       if (!initialData) {
         setFormData({ name: '', description: '' })
       }
+      onClose()
     } catch (error) {
        console.error('Error saving category:', error)
     } finally {
@@ -43,7 +66,7 @@ export default function CategoryFormModal({ visible, onClose, onSubmit, initialD
   }
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height={0.5}>
+    <BottomSheet visible={visible} onClose={onClose} height={0.85}>
       <View className="flex-1 bg-white dark:bg-slate-950">
         <View className="flex-row justify-between items-center px-6 py-5">
           <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl font-black text-slate-900 dark:text-white">
@@ -84,6 +107,7 @@ export default function CategoryFormModal({ visible, onClose, onSubmit, initialD
             title={initialData ? "Atualizar" : "Criar Categoria"}
             onPress={handleSave}
             isLoading={isSubmitting}
+            icon={initialData ? <Edit2 size={20} color="white" /> : <Plus size={20} color="white" />}
             className="h-14 rounded-2xl shadow-lg shadow-primary/30"
           />
         </View>

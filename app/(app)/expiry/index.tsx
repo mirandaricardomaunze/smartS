@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, ScrollView } from 'react-native'
 import { useToastStore } from '@/store/useToastStore'
-import { useRouter } from 'expo-router'
+import { useConfirmStore } from '@/store/useConfirmStore'
+import { router } from 'expo-router'
+
 import { useExpiry } from '@/features/expiry/hooks/useExpiry'
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useCompanyStore } from '@/store/companyStore'
@@ -21,7 +23,8 @@ import { CalendarClock, Plus, Trash2, Package, AlertTriangle, CheckCircle2, Info
 import ProductPickerModal from '@/features/products/components/ProductPickerModal'
 
 export default function ExpiryListScreen() {
-  const router = useRouter()
+
+
   const { lots, isLoading: expiryLoading, createLot, deleteLot } = useExpiry()
   const { products, isLoading: productsLoading } = useProducts()
   const { activeCompanyId } = useCompanyStore()
@@ -91,17 +94,26 @@ export default function ExpiryListScreen() {
        setIsModalOpen(false)
        setFormData({ product_id: '', product_name: '', lot_number: '', expiry_date: '', quantity: '' })
     } catch (e: any) {
-       Alert.alert('Erro', e.message)
+       useConfirmStore.getState().show({
+         title: 'Erro',
+         message: e.message,
+         confirmLabel: 'OK',
+         showCancel: false,
+         onConfirm: () => {}
+       })
     } finally {
        setIsSubmitting(false)
     }
   }
 
   const handleDelete = (id: string) => {
-      Alert.alert('Confirmar', 'Deseja remover este registo de lote?', [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Remover', style: 'destructive', onPress: () => deleteLot(id) }
-      ])
+      useConfirmStore.getState().show({
+          title: 'Confirmar',
+          message: 'Deseja remover este registo de lote?',
+          confirmLabel: 'Remover',
+          isDestructive: true,
+          onConfirm: () => deleteLot(id)
+      })
   }
 
   const renderItem = ({ item }: { item: any }) => {
@@ -175,7 +187,7 @@ export default function ExpiryListScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header 
         title="Lotes e Validades" 
         rightElement={

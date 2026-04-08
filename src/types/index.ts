@@ -1,9 +1,10 @@
-export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer' | 'vendedor' | 'contador'
+export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer' | 'vendedor' | 'contador' | 'super_admin'
 export type MovementType = 'entry' | 'exit' | 'transfer' | 'adjustment'
 export type NoteType = 'entry' | 'exit' | 'transfer'
 export type OrderStatus = 'pending' | 'picking' | 'completed' | 'cancelled' | 'shipped' | 'delivered' | 'paid'
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'
 export type SyncStatus = 0 | 1
+export type PlanType = 'TRIAL' | 'BASIC' | 'PRO' | 'ELITE'
 
 export interface BaseEntity {
   readonly id: string
@@ -156,6 +157,8 @@ export interface StockMovement {
   synced: SyncStatus
 }
 
+export type CreateStockMovementData = Omit<StockMovement, 'id' | 'company_id' | 'user_id' | 'created_at' | 'synced'>
+
 export interface ExpiryLot {
   readonly id: string
   company_id: string
@@ -178,6 +181,8 @@ export interface Note {
   readonly created_at: string
   synced: SyncStatus
 }
+
+export type CreateNoteData = Omit<Note, 'id' | 'company_id' | 'user_id' | 'created_at' | 'synced' | 'number' | 'items'> & { items: NoteItem[] }
 
 export interface NoteItem {
   product_id: string
@@ -210,6 +215,25 @@ export interface HistoryEntry {
   readonly created_at: string
 }
 
+export interface Subscription {
+  company_id: string
+  trial_started_at: string | null
+  trial_ends_at: string | null
+  plan: PlanType
+  trial_expired: 0 | 1
+  onboarding_completed: 0 | 1
+  updated_at: string
+  synced: SyncStatus
+}
+
+export interface SubscriptionStatus {
+  status: 'ACTIVE' | 'EXPIRED'
+  days_left: number
+  plan: PlanType
+}
+
+export type AutoBackupInterval = 'disabled' | '1h' | '6h' | '24h' | 'weekly'
+
 export interface Settings {
   dark_mode: 0 | 1
   currency: string
@@ -217,4 +241,8 @@ export interface Settings {
   unit_of_measure: string
   include_tax: 0 | 1
   biometrics_enabled: 0 | 1
+  onboarding_completed: 0 | 1
+  country_code: string
+  auto_backup_enabled: 0 | 1
+  auto_backup_interval: AutoBackupInterval
 }

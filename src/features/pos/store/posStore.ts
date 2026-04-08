@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import { Product, Customer } from '@/types'
+import { useToastStore } from '@/store/useToastStore'
+import { feedback } from '@/utils/haptics'
+import { useCompanyStore } from '@/store/companyStore'
 
 export interface CartItem extends Product {
   quantity: number
@@ -20,6 +23,7 @@ interface POSState {
   
   // Actions
   addToCart: (product: Product, quantity?: number) => void
+  addGenericItem: (name: string, price: number) => void
   removeFromCart: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   setCustomer: (customer: Customer | null) => void
@@ -43,14 +47,26 @@ export const usePOSStore = create<POSState>((set, get) => ({
   discount: 0,
   parkedCarts: [],
 
-  addToCart: (product, quantity = 1) => {
+  addToCart: (product: Product, quantity: number = 1) => {
     const { cart } = get()
-    const existingItem = cart.find((item) => item.id === product.id)
+    const existingItem = cart.find((item: CartItem) => item.id === product.id)
+    
+    // Check if it's a generic item (no stock validation needed)
+    const isGeneric = product.id.startsWith('generic-')
+    
+    if (!isGeneric) {
+      const currentQtyInCart = existingItem?.quantity || 0
+      if (currentQtyInCart + quantity > product.current_stock) {
+        feedback.warning()
+        useToastStore.getState().show(`Stock insuficiente para ${product.name}. Disponível: ${product.current_stock}`, 'warning')
+        return
+      }
+    }
 
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity
       set({
-        cart: cart.map((item) =>
+        cart: cart.map((item: CartItem) =>
           item.id === product.id
             ? { ...item, quantity: newQuantity, total: newQuantity * (item.sale_price || 0) }
             : item
@@ -70,18 +86,67 @@ export const usePOSStore = create<POSState>((set, get) => ({
     }
   },
 
-  removeFromCart: (productId) => {
-    set({ cart: get().cart.filter((item) => item.id !== productId) })
+  addGenericItem: (name: string, price: number) => {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) {
+      useToastStore.getState().show('Erro: Nenhum contexto de empresa encontrado.', 'error')
+      return
+    }
+
+    const { cart } = get()
+    const newItem: CartItem = {
+      id: `generic-${Date.now()}`,
+      company_id: activeCompanyId,
+      name,
+      barcode: null,
+      reference: 'AVULSO',
+      sku: `AV-${Date.now()}`,
+      category_id: null,
+      brand: null,
+      unit: 'un',
+      units_per_box: null,
+      boxes_per_pallet: null,
+      minimum_stock: 0,
+      current_stock: 1,
+      purchase_price: null,
+      sale_price: price,
+      tax_rate: 0,
+      supplier_id: null,
+      description: 'Item inserido manualmente no PDV',
+      image_url: null,
+      is_active: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      synced: 0,
+      quantity: 1,
+      total: price,
+    }
+    set({ cart: [...cart, newItem] })
   },
 
-  updateQuantity: (productId, quantity) => {
+  removeFromCart: (productId: string) => {
+    set({ cart: get().cart.filter((item: CartItem) => item.id !== productId) })
+  },
+
+  updateQuantity: (productId: string, quantity: number) => {
     if (quantity <= 0) {
       get().removeFromCart(productId)
       return
     }
 
+    const { cart } = get()
+    const item = cart.find((i: CartItem) => i.id === productId)
+    
+    if (item && !item.id.startsWith('generic-')) {
+      if (quantity > item.current_stock) {
+        feedback.warning()
+        useToastStore.getState().show(`Apenas ${item.current_stock} unidades disponíveis em stock.`, 'warning')
+        return
+      }
+    }
+
     set({
-      cart: get().cart.map((item) =>
+      cart: get().cart.map((item: CartItem) =>
         item.id === productId
           ? { ...item, quantity, total: quantity * (item.sale_price || 0) }
           : item
@@ -89,8 +154,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
     })
   },
 
-  setCustomer: (selectedCustomer) => set({ selectedCustomer }),
-  setDiscount: (discount) => set({ discount }),
+  setCustomer: (selectedCustomer: Customer | null) => set({ selectedCustomer }),
+  setDiscount: (discount: number) => set({ discount }),
   
   clearCart: () => set({ cart: [], selectedCustomer: null, discount: 0 }),
 
@@ -117,13 +182,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   resumeCart: (parkedId: string) => {
     const { parkedCarts, cart } = get()
     
-    // If current cart is not empty, park it first? Or just swap? 
-    // Let's swap for simplicity but user should be careful.
-    const parked = parkedCarts.find(p => p.id === parkedId)
+    const parked = parkedCarts.find((p: any) => p.id === parkedId)
     if (!parked) return
 
-    // Move current cart to parked if not empty
-    let updatedParked = parkedCarts.filter(p => p.id !== parkedId)
+    let updatedParked = parkedCarts.filter((p: any) => p.id !== parkedId)
     if (cart.length > 0) {
         updatedParked = [{
             id: Math.random().toString(36).substring(7),
@@ -144,16 +206,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   removeParkedCart: (parkedId: string) => {
     set({
-      parkedCarts: get().parkedCarts.filter(p => p.id !== parkedId)
+      parkedCarts: get().parkedCarts.filter((p: any) => p.id !== parkedId)
     })
   },
 
   getSubtotal: () => {
-    return get().cart.reduce((acc, item) => acc + item.total, 0)
+    return get().cart.reduce((acc: number, item: CartItem) => acc + item.total, 0)
   },
 
   getTaxTotal: () => {
-    return get().cart.reduce((acc, item) => {
+    return get().cart.reduce((acc: number, item: CartItem) => {
         const tax = (item.tax_rate || 0) / 100
         return acc + (item.total * tax)
     }, 0)

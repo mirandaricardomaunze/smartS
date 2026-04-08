@@ -28,6 +28,12 @@ export interface ProfitabilityAnalysis {
   margin_percentage: number
 }
 
+export interface CriticalStockItem {
+  name: string
+  current_stock: number
+  minimum_stock: number
+}
+
 export const intelligenceService = {
   /**
    * Performs ABC Analysis based on total sales value in the last 30 days
@@ -163,11 +169,11 @@ export const intelligenceService = {
   /**
    * Returns items that are strictly below their minimum_stock
    */
-  getCriticalStockItems(): any[] {
+  getCriticalStockItems(): CriticalStockItem[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
 
-    return db.getAllSync<any>(
+    return db.getAllSync<CriticalStockItem>(
       `SELECT name, current_stock, minimum_stock 
        FROM products 
        WHERE company_id = ? 

@@ -1,20 +1,26 @@
 import React, { useState } from 'react'
 import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, useColorScheme } from 'react-native'
-import { Link, useRouter } from 'expo-router'
+import { Link, router } from 'expo-router'
+
 import { useUsers } from '@/features/users/hooks/useUsers'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Screen from '@/components/layout/Screen'
-import { User as UserIcon, Lock, Mail, Building, ChevronLeft } from 'lucide-react-native'
+import { User as UserIcon, Lock, Mail, Building, ChevronLeft, UserPlus } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Card from '@/components/ui/Card'
+import BackButton from '@/components/ui/BackButton'
 import { feedback } from '@/utils/haptics'
 import { useToastStore } from '@/store/useToastStore'
 import { StatusBar } from 'expo-status-bar'
 
 export default function RegisterScreen() {
-  const router = useRouter()
-  const { createUser, isLoading } = useUsers()
+
+
+  const { createUser, isLoading: isRegisterLoading } = useUsers()
+  const { loginWithGoogle, isLoading: isGoogleLoading } = useAuth()
+  const isLoading = isRegisterLoading || isGoogleLoading
   const showToast = useToastStore((state) => state.show)
   
   const [name, setName] = useState('')
@@ -60,6 +66,20 @@ export default function RegisterScreen() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    feedback.medium()
+    try {
+      await loginWithGoogle()
+      feedback.success()
+      showToast('Bem-vindo!', 'success')
+    } catch (e: any) {
+      feedback.error()
+      if (e.message !== 'User cancelled') {
+        showToast('Falha no login Google', 'error')
+      }
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <StatusBar translucent backgroundColor='transparent' style='light' />
@@ -87,13 +107,8 @@ export default function RegisterScreen() {
             <View className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
             <View className="absolute bottom-40 right-10 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl" />
 
-            <Card variant="glass" glassIntensity={15} className="w-full max-w-sm self-center p-8 border-white/20 shadow-premium-lg">
-              <TouchableOpacity 
-                onPress={() => router.back()}
-                className="w-10 h-10 bg-white/10 rounded-2xl items-center justify-center mb-8 border border-white/20 active:bg-white/20"
-              >
-                <ChevronLeft size={24} color="white" />
-              </TouchableOpacity>
+            <Card variant="glass" glassIntensity={15} className="w-full max-w-[440px] self-center p-6 border-white/20 shadow-premium-lg">
+              <BackButton variant="glass" className="mb-8" />
 
               <View className="mb-8">
                 <Text style={{ fontFamily: 'Inter-Black' }} className="text-3xl font-black text-white mb-2">
@@ -167,7 +182,28 @@ export default function RegisterScreen() {
                   title="Registar agora" 
                   onPress={handleRegister}
                   isLoading={isLoading}
+                  icon={<UserPlus size={20} color="white" />}
                   className="shadow-xl h-14 mt-4"
+                />
+
+                <View className="flex-row items-center my-6">
+                  <View className="flex-1 h-[1px] bg-white/20" />
+                  <Text className="mx-4 text-white/40 text-xs font-bold uppercase tracking-widest">Ou</Text>
+                  <View className="flex-1 h-[1px] bg-white/20" />
+                </View>
+
+                <Button 
+                  title="Continuar com Google" 
+                  onPress={handleGoogleLogin}
+                  isLoading={isGoogleLoading}
+                  variant="ghost"
+                  className="bg-white/10 border-white/10 h-14"
+                  textStyle={{ color: '#ffffff' }}
+                  icon={
+                    <View className="w-5 h-5 bg-white rounded-full items-center justify-center mr-2">
+                      <Text className="text-blue-600 font-black text-[10px]">G</Text>
+                    </View>
+                  }
                 />
               </View>
 

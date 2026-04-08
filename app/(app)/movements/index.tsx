@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useMovements } from '@/features/movements/hooks/useMovements'
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useAuthStore } from '@/features/auth/store/authStore'
@@ -12,29 +12,45 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Loading from '@/components/ui/Loading'
 import EmptyState from '@/components/ui/EmptyState'
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, SettingsIcon, Calendar } from 'lucide-react-native'
+import { Input, FilterBar } from '@/components/ui'
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, SettingsIcon, Calendar, Search } from 'lucide-react-native'
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated'
 import MovementFormModal from '@/features/movements/components/MovementFormModal'
+import MovementDetailModal from '@/features/movements/components/MovementDetailModal'
 import { feedback } from '@/utils/haptics'
 
 export default function MovementsListScreen() {
   const router = useRouter()
-  const { movements, isLoading: movementsLoading, createMovement, loadMore, hasMore } = useMovements()
+  const { product_id } = useLocalSearchParams<{ product_id: string }>()
+  const { movements, isLoading: movementsLoading, createMovement, loadMore, hasMore } = useMovements(product_id)
   const { products, isLoading: productsLoading } = useProducts()
   const { user } = useAuthStore()
 
   const [modalVisible, setModalVisible] = useState(false)
+  const [detailVisible, setDetailVisible] = useState(false)
+  const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const canCreate = user && hasPermission(user.role, 'manage_movements')
   const isLoading = movementsLoading || productsLoading
 
   // Group movements by date
   const groupedMovements = useMemo(() => {
-    const filtered = filterType === 'all' 
+    let filtered = filterType === 'all' 
       ? movements 
       : movements.filter(m => m.type === filterType)
     
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(m => {
+        const product = products.find(p => p.id === m.product_id)
+        return product?.name.toLowerCase().includes(q) || 
+               product?.sku.toLowerCase().includes(q) ||
+               product?.reference?.toLowerCase().includes(q)
+      })
+    }
+
     // Sort by date descending
     const sorted = [...filtered].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -91,7 +107,15 @@ export default function MovementsListScreen() {
     }
 
     return (
-      <View className="mb-4 flex-row items-center">
+      <TouchableOpacity 
+        onPress={() => {
+          feedback.light()
+          setSelectedMovementId(item.id)
+          setDetailVisible(true)
+        }}
+        activeOpacity={0.7}
+        className="mb-4 flex-row items-center"
+      >
         <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${bgClass} shadow-sm shadow-black/5`}>
            {icon}
         </View>
@@ -116,23 +140,10 @@ export default function MovementsListScreen() {
              <Badge label={product?.unit || 'un'} variant="info" className="py-0 px-2" />
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 
-  const FilterPill = ({ label, value }: { label: string, value: string }) => {
-     const isActive = filterType === value
-     return (
-       <TouchableOpacity 
-         onPress={() => setFilterType(value)}
-         className={`px-5 py-2.5 rounded-full mr-2 border shadow-sm ${isActive ? 'bg-primary border-primary shadow-primary/20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-black/5'}`}
-       >
-         <Text style={{ fontFamily: 'Inter-Bold' }} className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-            {label}
-         </Text>
-       </TouchableOpacity>
-     )
-  }
 
   return (
     <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900" withHeader>
@@ -144,27 +155,36 @@ export default function MovementsListScreen() {
               feedback.light()
               setModalVisible(true)
             }}
-            className="w-10 h-10 bg-white/10 rounded-full items-center justify-center border border-white/20 active:bg-white/20"
+            className="flex-row items-center bg-white/10 px-4 py-2 rounded-full border border-white/20 active:bg-white/20"
           >
-            <Plus size={20} color="white" />
+            <View className="mr-2">
+              <SettingsIcon size={18} color="white" />
+            </View>
+            <Text style={{ fontFamily: 'Inter-Bold' }} className="text-white text-xs font-bold">Ajustar</Text>
           </TouchableOpacity>
         ) : null}
       />
-      
-      <View className="px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-         <FlatList 
-           horizontal
-           showsHorizontalScrollIndicator={false}
-           data={[
-             { label: 'Todos', value: 'all' },
-             { label: 'Entradas', value: 'entry' },
-             { label: 'Saídas', value: 'exit' },
-             { label: 'Ajustes', value: 'adjustment' },
-             { label: 'Transferências', value: 'transfer' },
-           ]}
-           keyExtractor={i => i.value}
-           renderItem={({ item }) => <FilterPill label={item.label} value={item.value} />}
-         />
+      <View className="px-6 mt-4">
+        <Input 
+          placeholder="Pesquisar movimentos..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          icon={<Search size={20} color="#94a3b8" />}
+          className="bg-white dark:bg-slate-900 mb-0"
+        />
+
+        <FilterBar 
+          options={[
+            { label: 'Todos', value: 'all' },
+            { label: 'Entradas', value: 'entry' },
+            { label: 'Saídas', value: 'exit' },
+            { label: 'Ajustes', value: 'adjustment' },
+            { label: 'Transferências', value: 'transfer' },
+          ]}
+          selectedValue={filterType}
+          onSelect={setFilterType}
+          className="py-2"
+        />
       </View>
 
       {isLoading ? (
@@ -186,7 +206,9 @@ export default function MovementsListScreen() {
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInUp.delay(index * 100)} className="mb-6">
               <View className="flex-row items-center mb-4">
-                 <Calendar size={14} color="#4f46e5" className="mr-2" />
+                 <View className="mr-2">
+                   <Calendar size={14} color="#4f46e5" />
+                 </View>
                  <Text style={{ fontFamily: 'Inter-Black' }} className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                    {item.date}
                  </Text>
@@ -220,6 +242,12 @@ export default function MovementsListScreen() {
         onSave={async (data) => {
           await createMovement(data)
         }}
+      />
+
+      <MovementDetailModal 
+        visible={detailVisible}
+        onClose={() => setDetailVisible(false)}
+        movementId={selectedMovementId}
       />
     </Screen>
   )

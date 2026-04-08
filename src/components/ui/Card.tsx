@@ -47,16 +47,16 @@ export default function Card({
     case 'glass':
       // Let BlurView handle the tint to avoid "double background" look
       // Adding a very subtle background color helps the glass look more "solid" on complex backgrounds
-      conditionalClasses = 'bg-white/5 dark:bg-slate-900/5 border border-white/20 dark:border-white/10'
+      conditionalClasses = 'bg-white/10 dark:bg-slate-900/40 border border-white/20 dark:border-white/10'
       break
     case 'gradient':
       conditionalClasses = ''
       break
     case 'premium':
-      conditionalClasses = 'bg-white dark:bg-slate-950 border border-slate-100 dark:border-white/5 shadow-premium-md'
+      conditionalClasses = 'bg-white dark:bg-slate-900/90 border border-slate-100 dark:border-white/10 shadow-premium-sm'
       break
     default:
-      conditionalClasses = 'bg-white dark:bg-slate-950 border border-slate-100 dark:border-white/5 shadow-premium-sm'
+      conditionalClasses = 'bg-white dark:bg-slate-900/90 border border-slate-100 dark:border-white/10 shadow-premium-sm'
   }
 
   const renderContent = () => (

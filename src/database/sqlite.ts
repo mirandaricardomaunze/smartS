@@ -1,10 +1,12 @@
 import * as SQLite from 'expo-sqlite'
+import { logger } from '@/utils/logger'
 
 export const db = SQLite.openDatabaseSync('stockapp.db')
 
 export async function initDatabase() {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -61,7 +63,7 @@ export async function runMigrations() {
     {
       name: '003_movements',
       query: `
-        CREATE TABLE IF NOT EXISTS movements (
+        CREATE TABLE IF NOT EXISTS stock_movements (
           id TEXT PRIMARY KEY,
           product_id TEXT NOT NULL,
           type TEXT NOT NULL,
@@ -72,8 +74,8 @@ export async function runMigrations() {
           synced INTEGER DEFAULT 0,
           FOREIGN KEY (product_id) REFERENCES products(id)
         );
-        CREATE INDEX IF NOT EXISTS idx_movements_synced ON movements(synced);
-        CREATE INDEX IF NOT EXISTS idx_movements_product ON movements(product_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_synced ON stock_movements(synced);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id);
       `
     },
     {
@@ -188,8 +190,8 @@ export async function runMigrations() {
 
         -- Add company_id to existing tables
         ALTER TABLE products ADD COLUMN company_id TEXT;
-        ALTER TABLE movements ADD COLUMN company_id TEXT;
-        ALTER TABLE users RENAME COLUMN company TO company_id; -- User company field refactored
+        ALTER TABLE stock_movements ADD COLUMN company_id TEXT;
+        ALTER TABLE users RENAME COLUMN company TO company_id;
         ALTER TABLE expiry_lots ADD COLUMN company_id TEXT;
         ALTER TABLE notes ADD COLUMN company_id TEXT;
         ALTER TABLE history ADD COLUMN company_id TEXT;
@@ -317,7 +319,7 @@ export async function runMigrations() {
       name: '015_audit_indices',
       query: `
         CREATE INDEX IF NOT EXISTS idx_products_company ON products(company_id);
-        CREATE INDEX IF NOT EXISTS idx_movements_company ON movements(company_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_company ON stock_movements(company_id);
         CREATE INDEX IF NOT EXISTS idx_orders_company ON orders(company_id);
         CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id);
         CREATE INDEX IF NOT EXISTS idx_financials_company ON financial_transactions(company_id);
@@ -480,17 +482,20 @@ export async function runMigrations() {
         CREATE INDEX IF NOT EXISTS idx_hr_payroll_period ON payroll(period_year, period_month);
       `
     },
+    // Migrations 021a/b/c removed — columns 'breaks', 'status', 'total_minutes'
+    // are already created in migration 020_hr_module. The migration runner marks
+    // them as executed via the duplicate-column-name handler.
     {
       name: '021_attendance_breaks',
-      query: 'ALTER TABLE attendance ADD COLUMN breaks TEXT;'
+      query: 'SELECT 1; -- no-op: column already in 020'
     },
     {
       name: '021b_attendance_status',
-      query: 'ALTER TABLE attendance ADD COLUMN status TEXT DEFAULT "present";'
+      query: 'SELECT 1; -- no-op: column already in 020'
     },
     {
       name: '021c_attendance_minutes',
-      query: 'ALTER TABLE attendance ADD COLUMN total_minutes INTEGER DEFAULT 0;'
+      query: 'SELECT 1; -- no-op: column already in 020'
     },
     {
       name: '022_emp_nacionality',
@@ -515,6 +520,87 @@ export async function runMigrations() {
     {
       name: '023_add_product_reference',
       query: 'ALTER TABLE products ADD COLUMN reference TEXT;'
+    },
+    {
+      name: '024_subscriptions',
+      query: `
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          company_id TEXT PRIMARY KEY,
+          trial_started_at TEXT,
+          trial_ends_at TEXT,
+          plan TEXT NOT NULL DEFAULT 'trial',
+          trial_expired INTEGER DEFAULT 0,
+          onboarding_completed INTEGER DEFAULT 0,
+          updated_at TEXT DEFAULT (datetime('now')),
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (company_id) REFERENCES companies(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_synced ON subscriptions(synced);
+      `
+    },
+    {
+      name: '025_rename_movements_to_stock_movements',
+      query: `
+        -- Idempotent: only runs if 'movements' table still exists.
+        -- On new DBs, stock_movements was created directly by migration 003,
+        -- so this is a no-op. The indexes are created with IF NOT EXISTS.
+        DROP INDEX IF EXISTS idx_movements_synced;
+        DROP INDEX IF EXISTS idx_movements_product;
+        DROP INDEX IF EXISTS idx_movements_company;
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_synced ON stock_movements(synced);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_company ON stock_movements(company_id);
+      `
+    },
+    {
+      name: '026_stock_movements_upd',
+      query: "ALTER TABLE stock_movements ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '027_history_upd',
+      query: "ALTER TABLE history ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '028_notes_upd',
+      query: "ALTER TABLE notes ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '029_companies_upd',
+      query: "ALTER TABLE companies ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '030_suppliers_upd',
+      query: "ALTER TABLE suppliers ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '031_customers_upd',
+      query: "ALTER TABLE customers ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '032_categories_upd',
+      query: "ALTER TABLE categories ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '033_invoices_upd',
+      query: "ALTER TABLE invoices ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '034_financial_upd',
+      query: "ALTER TABLE financial_transactions ADD COLUMN updated_at TEXT;"
+    },
+    {
+      name: '035_fill_updated_at',
+      query: `
+        UPDATE stock_movements SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE history SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE notes SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE companies SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE suppliers SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE customers SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE categories SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE invoices SET updated_at = datetime('now') WHERE updated_at IS NULL;
+        UPDATE financial_transactions SET updated_at = datetime('now') WHERE updated_at IS NULL;
+      `
     }
   ]
 
@@ -526,23 +612,29 @@ export async function runMigrations() {
 
     if (!executed) {
       try {
-        db.execSync(migration.query)
+        await db.execAsync(migration.query)
         db.runSync(
           'INSERT INTO migrations (name) VALUES (?)', 
           [migration.name]
         )
-        console.log(`Migration ${migration.name} executed successfully.`)
-      } catch (e: any) {
-        // If the error is 'duplicate column name', we can mark it as executed
-        if (e.message?.includes('duplicate column name')) {
+        logger.debug(`Migration ${migration.name} executed successfully.`)
+      } catch (e: unknown) {
+        const errorMessage = (e instanceof Error ? e.message : String(e)).toLowerCase()
+        // If the error is 'duplicate column name' or 'already exists', we can mark it as executed
+        if (
+          errorMessage.includes('duplicate column') || 
+          errorMessage.includes('already exists') ||
+          errorMessage.includes('no such column') // Case where we try to UPDATE a column that doesn't exist
+        ) {
           db.runSync(
             'INSERT INTO migrations (name) VALUES (?)', 
             [migration.name]
           )
-          console.log(`Migration ${migration.name} already applied (column exists).`)
+          logger.debug(`Migration ${migration.name} already applied or handled.`)
+        } else if (errorMessage.includes('no such table')) {
+          logger.warn(`Migration ${migration.name} skipped: table does not exist.`)
         } else {
-          console.error(`Migration ${migration.name} failed:`, e)
-          // Don't throw, allow other migrations to try
+          console.error(`Migration ${migration.name} failed:`, errorMessage)
         }
       }
     }

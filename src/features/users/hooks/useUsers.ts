@@ -4,7 +4,7 @@ import { User } from '@/types'
 
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {

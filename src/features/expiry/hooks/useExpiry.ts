@@ -4,7 +4,7 @@ import { ExpiryLot } from '@/types'
 
 export function useExpiry(productId?: string) {
   const [lots, setLots] = useState<ExpiryLot[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {

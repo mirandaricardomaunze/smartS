@@ -4,7 +4,7 @@ import { HistoryEntry } from '@/types'
 
 export function useHistory() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)

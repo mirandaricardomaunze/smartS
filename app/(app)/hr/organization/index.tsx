@@ -117,7 +117,7 @@ export default function OrganizationScreen() {
   )
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Estrutura Org." />
 
       {/* Tabs */}

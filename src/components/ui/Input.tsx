@@ -15,12 +15,20 @@ export default function Input({ label, error, icon, className, containerStyle, l
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const isPasswordField = secureTextEntry === true
 
+  // Extract layout and spacing classes to apply to the wrapper View
+  const layoutClasses = className?.match(/\b(flex(?:-\d+)?|m[xytrb]?-\d+|w-\d+|h-\d+|w-full|h-full|absolute|relative|top-\d+|bottom-\d+|left-\d+|right-\d+|z-\d+)\b/g)?.join(' ') || ''
+  const otherClasses = className?.split(' ').filter(c => !layoutClasses.includes(c)).join(' ') || ''
+
+  const hasHeight = layoutClasses.includes('h-')
+  const hasMarginBottom = layoutClasses.includes('mb-')
+  const hasHorizontalPadding = otherClasses.match(/\b(p[xrly]-\d+)\b/)
+
   return (
-    <View className={`w-full mb-4 ${className || ''}`}>
+    <View className={`${layoutClasses} ${!hasMarginBottom ? 'mb-4' : ''}`}>
       {label && <Text style={labelStyle} className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</Text>}
       <View 
         style={containerStyle}
-        className={`flex-row items-center border rounded-2xl bg-white dark:bg-slate-900 ${error ? 'border-red-500' : 'border-slate-100 dark:border-white/5 shadow-premium-sm focus:border-primary'} px-4 h-14`}
+        className={`flex-row items-center border rounded-2xl bg-white dark:bg-slate-900 ${error ? 'border-red-500' : 'border-slate-100 dark:border-white/5 shadow-premium-sm focus:border-primary'} ${!hasHorizontalPadding ? 'px-4' : ''} ${!hasHeight ? 'h-14' : 'h-full'} ${otherClasses}`}
       >
         {icon && <View className="mr-3">{icon}</View>}
         <TextInput

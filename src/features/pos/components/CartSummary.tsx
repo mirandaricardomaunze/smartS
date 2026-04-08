@@ -31,7 +31,7 @@ export default function CartSummary({ onCheckout }: CartSummaryProps) {
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-slate-950 shadow-premium-lg rounded-t-[32px]">
+    <View className="flex-1 bg-white dark:bg-[#0f172a]/95 shadow-premium-lg rounded-t-[32px]">
       <View className="p-4 border-b border-slate-100 dark:border-white/5 flex-row items-center justify-between">
         <Text className="text-lg font-bold text-slate-900 dark:text-white">
           Carrinho ({cart.length})

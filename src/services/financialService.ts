@@ -40,13 +40,21 @@ export const financialService = {
     const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
     const lastDayMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString()
 
+    const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+    const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString()
+
     const stats = financialRepository.getStats(companyId, firstDayMonth, lastDayMonth)
-    
+    const prevStats = financialRepository.getStats(companyId, firstDayPrevMonth, lastDayPrevMonth)
+
     const orders = orderRepository.getAll(companyId)
     const monthlyOrders = orders.filter(o => o.created_at >= firstDayMonth)
-    
+
     const pendingInvoices = invoiceRepository.getAll(companyId).filter(i => i.status === 'issued')
     const totalPending = pendingInvoices.reduce((acc, inv) => acc + inv.total_amount, 0)
+
+    const topPerformance = prevStats.income > 0
+      ? (stats.income - prevStats.income) / prevStats.income
+      : stats.income > 0 ? 1 : 0
 
     return {
       monthlyRevenue: stats.income,
@@ -54,7 +62,7 @@ export const financialService = {
       netProfit: stats.income - stats.expense,
       ordersCount: monthlyOrders.length,
       pendingCollection: totalPending,
-      topPerformance: 0.85 // Placeholder for growth percentage
+      topPerformance,
     }
   }
 }

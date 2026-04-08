@@ -6,7 +6,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Screen from '@/components/layout/Screen'
 import FormError from '@/components/forms/FormError'
-import { Lock, Mail } from 'lucide-react-native'
+import { Lock, Mail, LogIn } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Card from '@/components/ui/Card'
 import { feedback } from '@/utils/haptics'
@@ -14,7 +14,7 @@ import { useToastStore } from '@/store/useToastStore'
 import { StatusBar } from 'expo-status-bar'
 
 export default function LoginScreen() {
-  const { login, isLoading, error: authError } = useAuth()
+  const { login, loginWithGoogle, isLoading, error: authError } = useAuth()
   const showToast = useToastStore((state) => state.show)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,8 +36,22 @@ export default function LoginScreen() {
       feedback.success()
       showToast('Bem-vindo de volta!', 'success')
     } catch (e: any) {
-       feedback.error()
-       showToast('Falha no login', 'error')
+      feedback.error()
+      showToast('Falha no login', 'error')
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    feedback.medium()
+    try {
+      await loginWithGoogle()
+      feedback.success()
+      showToast('Bem-vindo!', 'success')
+    } catch (e: any) {
+      feedback.error()
+      if (e.message !== 'User cancelled') {
+        showToast('Falha no login Google', 'error')
+      }
     }
   }
 
@@ -68,7 +82,7 @@ export default function LoginScreen() {
             <View className="absolute top-20 right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
             <View className="absolute bottom-20 -left-10 w-40 h-40 bg-indigo-400/20 rounded-full blur-3xl" />
 
-            <Card variant="glass" glassIntensity={15} className="w-full max-w-sm self-center p-8 border-white/20 shadow-premium-lg">
+            <Card variant="glass" glassIntensity={15} className="w-full max-w-[440px] self-center p-6 border-white/20 shadow-premium-lg">
               {/* Unified Logo area inside the form card */}
               <View className="items-center mb-10">
                 <View className="w-20 h-20 bg-white/10 rounded-[28px] items-center justify-center mb-4 border border-white/20 shadow-xl">
@@ -124,7 +138,28 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 isLoading={isLoading}
                 variant="primary"
+                icon={<LogIn size={20} color="white" />}
                 className="shadow-xl h-14 mt-4"
+              />
+
+              <View className="flex-row items-center my-6">
+                <View className="flex-1 h-[1px] bg-white/20" />
+                <Text className="mx-4 text-white/40 text-xs font-bold uppercase tracking-widest">Ou</Text>
+                <View className="flex-1 h-[1px] bg-white/20" />
+              </View>
+
+              <Button 
+                title="Continuar com Google" 
+                onPress={handleGoogleLogin}
+                isLoading={isLoading}
+                variant="ghost"
+                className="bg-white/10 border-white/10 h-14"
+                textStyle={{ color: '#ffffff' }}
+                icon={
+                  <View className="w-5 h-5 bg-white rounded-full items-center justify-center mr-2">
+                    <Text className="text-blue-600 font-black text-[10px]">G</Text>
+                  </View>
+                }
               />
               
               <View className="flex-row justify-center mt-10">

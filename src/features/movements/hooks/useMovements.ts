@@ -1,59 +1,64 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { movementsService } from '../services/movementsService'
-import { StockMovement } from '@/types'
+import { StockMovement, CreateStockMovementData } from '@/types'
+import { logger } from '@/utils/logger'
 
 export function useMovements(productId?: string) {
   const [movements, setMovements] = useState<StockMovement[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const pageRef = useRef(0)
   const PAGE_SIZE = 50
 
+  // Synchronous load — no async needed since service calls are synchronous
   const load = useCallback((isInitial = true) => {
     try {
       setIsLoading(true)
       setError(null)
-      const currentOffset = isInitial ? 0 : page * PAGE_SIZE
-      const data = productId 
-        ? movementsService.getByProductId(productId, PAGE_SIZE, currentOffset) 
+
+      if (isInitial) pageRef.current = 0
+
+      const currentOffset = pageRef.current * PAGE_SIZE
+      const data = productId
+        ? movementsService.getByProductId(productId, PAGE_SIZE, currentOffset)
         : movementsService.getAll(PAGE_SIZE, currentOffset)
-      
+
       if (isInitial) {
         setMovements(data)
-        setPage(1)
+        pageRef.current = 1
       } else {
         setMovements(prev => [...prev, ...data])
-        setPage(prev => prev + 1)
+        pageRef.current += 1
       }
-      
+
       setHasMore(data.length === PAGE_SIZE)
     } catch (e) {
-      setError('Erro ao carregar movimentos')
+      logger.error('[useMovements] load:', e)
+      setError(e instanceof Error ? e.message : 'Erro ao carregar movimentos')
     } finally {
       setIsLoading(false)
     }
-  }, [productId, page])
+  }, [productId])
 
   const loadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      load(false)
-    }
+    if (!isLoading && hasMore) load(false)
   }, [isLoading, hasMore, load])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(true) }, [productId])
 
-  const createMovement = useCallback(async (data: Parameters<typeof movementsService.create>[0]) => {
+  const createMovement = useCallback(async (data: CreateStockMovementData) => {
     try {
       const movement = movementsService.create(data)
       setMovements(prev => [movement, ...prev])
       return movement
-    } catch (e: any) {
-      const message = e.message || 'Erro ao criar movimento'
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro ao criar movimento'
+      logger.error('[useMovements] createMovement:', e)
       setError(message)
       throw e
     }
   }, [])
 
-  return { movements, isLoading, error, createMovement, reload: load, loadMore, hasMore }
+  return { movements, isLoading, error, createMovement, reload: () => load(true), loadMore, hasMore }
 }

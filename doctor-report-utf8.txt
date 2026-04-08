@@ -1,0 +1,99 @@
+﻿env: load .env
+env: export EXPO_PUBLIC_APP_SCHEME EXPO_PUBLIC_GOOGLE_CLIENT_ID EXPO_PUBLIC_SENTRY_DSN EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL
+Running 17 checks on your project...
+node.exe : [33mÔÇ║ [1m[@s
+entry/react-native/expo][2
+2m Missing config for 
+[1morganization, 
+project[22m. Environment 
+variables will be used as 
+a fallback during the 
+build. https://docs.sentry.
+io/platforms/react-native/m
+anual-setup/[0m
+No linha:1 caractere:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ([3  
+  3mÔÇ║ [1m[@...nual-se   
+ tup/[0m:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+13/17 checks passed. 4 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+Ô£û Check Expo config (app.json/ app.config.js) schema
+Errors validating fields in C:\Users\miran\Desktop\SmartS\app.json:
+ Field: android - should NOT have additional property 'navigationBarColor'.
+ Field: android - should NOT have additional property 'navigationBarStyle'.
+Error validating asset fields in C:\Users\miran\Desktop\SmartS\app.json:
+ Field: Android.adaptiveIcon.foregroundImage - the file extension should match the content, but the file extension is .png while the file content at './assets/adaptive-icon.png' is of type jpg.
+ Field: Android.adaptiveIcon.foregroundImage - field 'Android.adaptiveIcon.foregroundImage' should point to .png image but the file at './assets/adaptive-icon.png' has type jpg.
+ Field: Splash.image - the file extension should match the content, but the file extension is .png while the file content at './assets/splash.png' is of type jpg.
+ Field: Splash.image - field 'Splash.image' should point to .png image but the file at './assets/splash.png' has type jpg.
+ Field: icon - the file extension should match the content, but the file extension is .png while the file content at './assets/icon.png' is of type jpg.
+ Field: icon - field 'icon' should point to .png image but the file at './assets/icon.png' has type jpg.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+Ô£û Check dependencies for packages that should not be installed directly
+The package  "@types/react-native" should not be installed directly in your project, as types are included with the "react-native" package.
+Advice:
+Remove these packages from your package.json.
+
+Ô£û Check that no duplicate dependencies are installed
+Your project contains duplicate native module dependencies, which should be de-duplicated.
+Native builds may only contain one version of any given native module, and having multiple versions of a single Native module installed may lead to unexpected build errors.
+Found duplicates for expo-crypto:
+  Ôö£ÔöÇ expo-crypto@55.0.12 (at: node_modules\expo-crypto)
+  ÔööÔöÇ expo-crypto@15.0.8 (at: node_modules\expo-auth-session\node_modules\expo-crypto)
+Advice:
+Resolve your dependency issues and deduplicate your dependencies. Learn more: https://expo.fyi/resolving-dependency-issues
+
+Ô£û Check that packages match versions required by installed Expo SDK
+
+ÔØù Major version mismatches
+package                                 expected  found    
+expo-crypto                             ~15.0.8   55.0.12  
+expo-mail-composer                      ~15.0.8   55.0.11  
+expo-print                              ~15.0.8   55.0.11  
+expo-sharing                            ~14.0.8   55.0.16  
+expo-splash-screen                      ~31.0.13  55.0.15  
+react                                   19.1.0    18.3.1   
+react-dom                               19.1.0    18.3.1   
+@types/jest                             29.5.14   30.0.0   
+jest                                    ~29.7.0   30.3.0   
+
+ÔÜá´©Å Minor version mismatches
+package                                 expected  found    
+@react-native-community/datetimepicker  8.4.4     8.6.0    
+
+­ƒöº Patch version mismatches
+package                                 expected  found    
+react-native                            0.81.5    0.81.0   
+react-native-worklets                   0.5.1     0.5.2    
+
+Changelogs:
+- expo-crypto ÔåÆ https://github.com/expo/expo/blob/sdk-54/packages/expo-crypto/CHANGELOG.md
+- expo-mail-composer ÔåÆ https://github.com/expo/expo/blob/sdk-54/packages/expo-mail-composer/CHANGELOG.md
+- expo-print ÔåÆ https://github.com/expo/expo/blob/sdk-54/packages/expo-print/CHANGELOG.md
+- expo-sharing ÔåÆ https://github.com/expo/expo/blob/sdk-54/packages/expo-sharing/CHANGELOG.md
+- expo-splash-screen ÔåÆ https://github.com/expo/expo/blob/sdk-54/packages/expo-splash-screen/CHANGELOG.md
+
+12 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+4 checks failed, 
+indicating possible issues 
+with the project.
+

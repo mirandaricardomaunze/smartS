@@ -12,12 +12,13 @@ description: Rules and templates for creating premium-looking forms with correct
 4. **Contrast & Depth**: Use `shadow-premium-md` or `shadow-premium-lg` for cards to create depth.
 5. **Vibrant Actions**: Use `variant="gradient"` or `primary` ONLY for the final confirmation button. Secondary actions must use `ghost` or `secondary`.
 6. **Localization**: Tax ID labels must be `NIF / NUIT / Contribuinte`.
-7. **Auth Screens (Full screen Glassmorphism)**:
+7. **Standard Modal Height**: All form-related `BottomSheet` components must use `height={0.85}` to ensure consistent space for fields and avoid keyboard overlap.
+8. **Auth Screens (Full screen Glassmorphism)**:
     - Use `LinearGradient` as the base background.
     - Center form content using `View className="flex-1 justify-center px-6 py-10"`.
     - Use `Card variant="glass"` for the form container.
     - Set `KeyboardAvoidingView behavior="padding"` for maximum stability.
-8. **Input Contrast**:
+9. **Input Contrast**:
     - On glass backgrounds, always use `textStyle={{ color: '#ffffff' }}` for the `Input`.
     - Set `placeholderTextColor="rgba(255,255,255,0.4)"` for readability.
     - Use semi-transparent backgrounds for input containers: `containerStyle={{ backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.2)' }}`.

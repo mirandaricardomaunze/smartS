@@ -1,197 +1,233 @@
-import { View, Text, TouchableOpacity, FlatList, Alert, ScrollView } from 'react-native'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
+import { Plus } from 'lucide-react-native'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
-import { 
-  Clock, 
-  Calendar, 
-  Plus, 
-  CheckCircle2, 
-  XCircle, 
-  Search,
-  Users,
-  FileText,
-  Download,
-  MoreVertical,
-  Filter,
-  User
-} from 'lucide-react-native'
-import Card from '@/components/ui/Card'
-import Badge from '@/components/ui/Badge'
-import Loading from '@/components/ui/Loading'
-import EmptyState from '@/components/ui/EmptyState'
+import BottomSheet from '@/components/ui/BottomSheet'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
+import IconButton from '@/components/ui/IconButton'
 import { useAttendance } from '@/features/hr/hooks/useAttendance'
 import { useEmployees } from '@/features/hr/hooks/useEmployees'
-import { Attendance, AttendanceStatus } from '@/features/hr/types'
+import { useToastStore } from '@/store/useToastStore'
 import { feedback } from '@/utils/haptics'
 import { generateAttendancePDF } from '@/features/hr/utils/hrExportUtils'
-import BottomSheet from '@/components/ui/BottomSheet'
-import Input from '@/components/ui/Input'
-import Button from '@/components/ui/Button'
-import Select from '@/components/ui/Select'
-import Animated, { FadeInUp } from 'react-native-reanimated'
+import { useCountryConfig } from '@/hooks/useCountryConfig'
+import AttendanceTodayView from '@/features/hr/components/AttendanceTodayView'
+import AttendanceMonthlySummaryView from '@/features/hr/components/AttendanceMonthlySummaryView'
+import AttendanceDetailModal from '@/features/hr/components/AttendanceDetailModal'
+import { Attendance, AttendanceStatus } from '@/features/hr/types'
 
-type AttendanceTab = 'hoje' | 'resumo'
+type Tab = 'hoje' | 'resumo'
+
+const STATUS_OPTIONS: { label: string; value: AttendanceStatus }[] = [
+  { label: 'Presente', value: 'present' },
+  { label: 'Atrasado', value: 'late' },
+  { label: 'Ausente', value: 'absent' },
+  { label: 'Justificado', value: 'justified' },
+]
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function currentTime() {
+  const now = new Date()
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+}
 
 export default function AttendanceScreen() {
-  const [activeTab, setActiveTab] = useState<AttendanceTab>('hoje')
-  const [month, setMonth] = useState(new Date().getMonth() + 1)
-  const [year, setYear] = useState(new Date().getFullYear())
-  
-  const { attendance, summary, isLoading, addManualEntry, error: attendanceError } = useAttendance({
-    month: activeTab === 'resumo' ? month : undefined,
-    year: activeTab === 'resumo' ? year : undefined
-  })
-  
-  React.useEffect(() => {
-    if (attendanceError) {
-      Alert.alert('Erro de Dados', attendanceError)
+  const { show: showToast } = useToastStore()
+  const countryConfig = useCountryConfig()
+
+  const now = new Date()
+
+  // ─── Tab & search state ──────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<Tab>('hoje')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'missing'>('all')
+
+  // ─── Período dinâmico para o resumo mensal ────────────────────────────────
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [year, setYear] = useState(now.getFullYear())
+
+  const handlePrevMonth = useCallback(() => {
+    feedback.light()
+    if (month === 1) {
+      setMonth(12)
+      setYear(y => y - 1)
+    } else {
+      setMonth(m => m - 1)
     }
-  }, [attendanceError])
+  }, [month])
+
+  const handleNextMonth = useCallback(() => {
+    const isCurrentOrFuture =
+      year > now.getFullYear() ||
+      (year === now.getFullYear() && month >= now.getMonth() + 1)
+    if (isCurrentOrFuture) return
+    feedback.light()
+    if (month === 12) {
+      setMonth(1)
+      setYear(y => y + 1)
+    } else {
+      setMonth(m => m + 1)
+    }
+  }, [month, year, now])
+
+  // ─── Attendance hook ──────────────────────────────────────────────────────
+  const attendanceConfig = useMemo(
+    () => (activeTab === 'resumo' ? { month, year } : {}),
+    [activeTab, month, year]
+  )
+  const { attendance, summary, isLoading, clockIn, clockOut, addManualEntry, error } =
+    useAttendance(attendanceConfig)
+
   const { employees } = useEmployees()
-  
-  const [modalVisible, setModalVisible] = useState(false)
+
+  React.useEffect(() => {
+    if (error) showToast(error, 'error')
+  }, [error])
+
+  // ─── Detail modal ────────────────────────────────────────────────────────
+  const [detailVisible, setDetailVisible] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<Attendance | null>(null)
+
+  // ─── Manual entry modal ──────────────────────────────────────────────────
+  const [manualVisible, setManualVisible] = useState(false)
   const [form, setForm] = useState({
     employee_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     clock_in: '08:00',
     clock_out: '17:00',
     status: 'present' as AttendanceStatus,
-    justification: ''
+    justification: '',
   })
 
-  const handleManualEntry = async () => {
-    try {
-      if (!form.employee_id || !form.date) throw new Error('Preencha os campos obrigatórios')
-      
-      const clockInArr = form.clock_in.split(':')
-      const clockOutArr = form.clock_out.split(':')
-      const diffMs = (parseInt(clockOutArr[0]) * 60 + parseInt(clockOutArr[1])) - 
-                     (parseInt(clockInArr[0]) * 60 + parseInt(clockInArr[1]))
-      
-      await addManualEntry({
-        ...form,
-        total_minutes: diffMs > 0 ? diffMs : 0,
-        breaks: null
-      })
-      
-      setModalVisible(false)
-      feedback.success()
-      Alert.alert('Sucesso', 'Registo manual efectuado.')
-    } catch (error: any) {
-      Alert.alert('Erro', error.message)
-    }
-  }
+  const openManual = useCallback(() => {
+    feedback.light()
+    setForm({
+      employee_id: '',
+      date: todayISO(),
+      clock_in: '08:00',
+      clock_out: '17:00',
+      status: 'present',
+      justification: '',
+    })
+    setManualVisible(true)
+  }, [])
 
-  const renderToday = () => (
-    <Animated.View entering={FadeInUp} className="px-6 flex-1">
-      <FlatList
-        data={attendance}
-        keyExtractor={item => item.id}
-        contentContainerClassName="pb-32"
-        renderItem={({ item }) => (
-          <Card variant="premium" className="p-4 mb-3 border-slate-100 dark:border-white/5 flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3">
-                <User size={20} color="#4f46e5" />
-              </View>
-              <View className="flex-1">
-                <Text style={{ fontFamily: 'Inter-Bold' }} className="text-slate-900 dark:text-white font-black text-sm">
-                  {item.employee_name || 'Funcionário'}
-                </Text>
-                <Text className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-tight mt-0.5">
-                  ENT: {item.clock_in} • SAI: {item.clock_out || '--:--'}
-                </Text>
-              </View>
-            </View>
-            <Badge variant={item.status === 'present' ? 'success' : 'warning'} label={item.status === 'present' ? 'Presente' : 'Atrasado'} />
-          </Card>
-        )}
-        ListEmptyComponent={<EmptyState title="Sem registos" description="Ninguém marcou ponto hoje." />}
-      />
-    </Animated.View>
+  const handleTabChange = useCallback((tab: Tab) => {
+    feedback.light()
+    setActiveTab(tab)
+    setSearchQuery('')
+    setStatusFilter('all')
+  }, [])
+
+  // ─── Clock in / out ───────────────────────────────────────────────────────
+  const handleMarkPresence = useCallback(
+    async (employee: any) => {
+      const record: Attendance | undefined = employee.attendance_record
+      const nowTime = currentTime()
+
+      try {
+        feedback.medium()
+
+        if (!record) {
+          await clockIn(employee.id, nowTime)
+          showToast(`${employee.name} marcou entrada`, 'success')
+        } else if (!record.clock_out) {
+          const [hIn, mIn] = (record.clock_in ?? '00:00').split(':').map(Number)
+          const [hOut, mOut] = nowTime.split(':').map(Number)
+          const diff = hOut * 60 + mOut - (hIn * 60 + mIn)
+          await clockOut(record.id, nowTime, diff > 0 ? diff : 0)
+          showToast(`${employee.name} marcou saída`, 'success')
+        } else {
+          setSelectedRecord(record)
+          setDetailVisible(true)
+        }
+
+        feedback.success()
+      } catch (e: any) {
+        showToast(e?.message ?? 'Erro ao processar ponto', 'error')
+      }
+    },
+    [clockIn, clockOut, showToast]
   )
 
-  const handleExportSummary = async () => {
+  // ─── Manual entry submit ──────────────────────────────────────────────────
+  const handleManualSubmit = useCallback(async () => {
+    if (!form.employee_id || !form.date) {
+      showToast('Preencha os campos obrigatórios', 'error')
+      return
+    }
+
+    try {
+      const [hIn, mIn] = form.clock_in.split(':').map(Number)
+      const [hOut, mOut] = form.clock_out.split(':').map(Number)
+      const totalMinutes = Math.max(0, hOut * 60 + mOut - (hIn * 60 + mIn))
+
+      await addManualEntry({
+        employee_id: form.employee_id,
+        date: form.date,
+        clock_in: form.clock_in,
+        clock_out: form.clock_out,
+        status: form.status,
+        justification: form.justification,
+        total_minutes: totalMinutes,
+        breaks: null,
+      })
+
+      setManualVisible(false)
+      feedback.success()
+      showToast('Registo manual efectuado.', 'success')
+    } catch (e: any) {
+      showToast(e?.message ?? 'Erro ao guardar registo', 'error')
+    }
+  }, [form, addManualEntry, showToast])
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+  const handleExport = useCallback(async () => {
     feedback.medium()
     try {
       if (summary.length === 0) throw new Error('Sem dados para exportar.')
-      await generateAttendancePDF(summary, month, year)
-    } catch (error: any) {
-      Alert.alert('Erro', error.message)
+      await generateAttendancePDF(summary, month, year, countryConfig)
+      feedback.success()
+    } catch (e: any) {
+      showToast(e?.message ?? 'Erro ao exportar', 'error')
     }
-  }
+  }, [summary, month, year, showToast, countryConfig])
 
-  const renderSummary = () => (
-    <Animated.View entering={FadeInUp} className="px-6 flex-1">
-       <View className="mb-4 flex-row justify-between items-center">
-         <Text className="text-slate-400 text-[10px] font-bold uppercase">Resultados: {summary.length}</Text>
-         <TouchableOpacity 
-           onPress={handleExportSummary}
-           className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20"
-          >
-           <Download size={14} color="#4f46e5" className="mr-2" />
-           <Text className="text-primary font-bold text-[10px] uppercase">Exportar PDF</Text>
-         </TouchableOpacity>
-       </View>
-       <FlatList
-        data={summary}
-        keyExtractor={item => item.id}
-        contentContainerClassName="pb-32"
-        renderItem={({ item }) => (
-          <Card variant="premium" className="p-4 mb-3 border-slate-100 dark:border-white/5 flex-row items-center justify-between">
-            <View className="flex-1">
-              <Text style={{ fontFamily: 'Inter-Bold' }} className="text-slate-900 dark:text-white font-black text-sm">
-                {item.employee_name}
-              </Text>
-              <Text className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-tight mt-0.5">
-                {item.present_days} Dias Presentes • {Math.round(item.total_minutes / 60)}h Total
-              </Text>
-            </View>
-            <TouchableOpacity className="p-2 bg-slate-100 dark:bg-white/10 rounded-xl">
-               <Download size={16} color="#64748b" />
-            </TouchableOpacity>
-          </Card>
-        )}
-        ListEmptyComponent={<EmptyState title="Sem dados" description="Nenhum resumo disponível para este mês." />}
-      />
-    </Animated.View>
+  const employeeOptions = useMemo(
+    () => employees.map(e => ({ label: e.name, value: e.id })),
+    [employees]
   )
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1" withHeader>
-      <Header title="Assiduidade" />
+    <Screen padHorizontal={false} withHeader>
+      <Header
+        title="Assiduidade"
+        rightElement={
+          <IconButton icon={Plus} variant="glass" onPress={openManual} />
+        }
+      />
 
-      {/* Stats Header */}
-      {activeTab === 'hoje' && (
-        <View className="px-6 py-4">
-          <Card variant="premium" className="bg-indigo-600 p-5 flex-row justify-between items-center border-none">
-            <View>
-              <Text className="text-white/60 text-[10px] font-bold uppercase mb-1">Presentes Agora</Text>
-              <Text style={{ fontFamily: 'Inter-Black' }} className="text-2xl text-white font-black">
-                {attendance.filter(a => a.clock_in && !a.clock_out).length}
-              </Text>
-              <Text className="text-white/80 text-[10px] font-medium mt-1">
-                Total de {attendance.length} registos hoje
-              </Text>
-            </View>
-            <View className="bg-white/20 p-3 rounded-2xl">
-              <Clock size={28} color="white" />
-            </View>
-          </Card>
-        </View>
-      )}
-
-      {/* Tabs */}
-      <View className="px-6 mb-6">
+      {/* Tab Switcher */}
+      <View className="px-6 mb-4 mt-6">
         <View className="bg-white dark:bg-white/5 p-1 rounded-2xl flex-row border border-slate-100 dark:border-white/10">
-          {(['hoje', 'resumo'] as AttendanceTab[]).map(tab => (
-            <TouchableOpacity 
+          {(['hoje', 'resumo'] as Tab[]).map(tab => (
+            <TouchableOpacity
               key={tab}
-              onPress={() => { feedback.light(); setActiveTab(tab); }}
-              className={`flex-1 py-3 items-center rounded-xl ${activeTab === tab ? 'bg-primary shadow-sm' : ''}`}
+              onPress={() => handleTabChange(tab)}
+              className={`flex-1 py-3 items-center rounded-xl ${activeTab === tab ? 'bg-indigo-600 shadow-sm' : ''}`}
             >
-              <Text style={{ fontFamily: 'Inter-Bold' }} className={`text-[10px] font-black uppercase ${activeTab === tab ? 'text-white' : 'text-slate-500'}`}>
+              <Text
+                style={{ fontFamily: 'Inter-Bold' }}
+                className={`text-[10px] font-black uppercase ${
+                  activeTab === tab ? 'text-white' : 'text-slate-500'
+                }`}
+              >
                 {tab === 'hoje' ? 'Hoje' : 'Resumo Mensal'}
               </Text>
             </TouchableOpacity>
@@ -199,24 +235,43 @@ export default function AttendanceScreen() {
         </View>
       </View>
 
-      {/* Main Content */}
-      {isLoading ? <Loading /> : activeTab === 'hoje' ? renderToday() : renderSummary()}
-
-      {/* FAB (Manual Entry) */}
-      {activeTab === 'hoje' && (
-        <TouchableOpacity 
-          className="absolute bottom-8 right-6 w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-premium-lg"
-          onPress={() => setModalVisible(true)}
-        >
-          <Plus size={28} color="white" />
-        </TouchableOpacity>
+      {/* Content */}
+      {activeTab === 'hoje' ? (
+        <AttendanceTodayView
+          employees={employees}
+          attendance={attendance}
+          isLoading={isLoading}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          onMarkPresence={handleMarkPresence}
+        />
+      ) : (
+        <AttendanceMonthlySummaryView
+          summary={summary}
+          month={month}
+          year={year}
+          isLoading={isLoading}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onExport={handleExport}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          isCurrentMonth={
+            month === now.getMonth() + 1 && year === now.getFullYear()
+          }
+        />
       )}
 
-      {/* Manual Entry BottomSheet */}
-      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)} height={0.8}>
+      {/* Manual Entry Bottom Sheet */}
+      <BottomSheet visible={manualVisible} onClose={() => setManualVisible(false)} height={0.8}>
         <View className="px-6 flex-1">
-          <Text style={{ fontFamily: 'Inter-Bold' }} className="text-lg font-black text-slate-900 dark:text-white mb-6">
-            Entrada de Ponto Manual
+          <Text
+            style={{ fontFamily: 'Inter-Bold' }}
+            className="text-lg font-black text-slate-900 dark:text-white mb-6"
+          >
+            Registo Manual
           </Text>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-20">
@@ -225,15 +280,14 @@ export default function AttendanceScreen() {
               placeholder="Seleccionar..."
               value={form.employee_id}
               onValueChange={v => setForm(f => ({ ...f, employee_id: v }))}
-              options={employees.map(e => ({ label: e.name, value: e.id }))}
+              options={employeeOptions}
             />
 
             <Input
-              label="Data"
-              placeholder="AAAA-MM-DD"
+              label="Data (AAAA-MM-DD)"
+              placeholder={todayISO()}
               value={form.date}
               onChangeText={t => setForm(f => ({ ...f, date: t }))}
-              icon={<Calendar size={18} color="#94a3b8" />}
             />
 
             <View className="flex-row">
@@ -259,33 +313,36 @@ export default function AttendanceScreen() {
               label="Estado"
               value={form.status}
               onValueChange={v => setForm(f => ({ ...f, status: v as AttendanceStatus }))}
-              options={[
-                { label: 'Presente', value: 'present' },
-                { label: 'Atrasado', value: 'late' },
-                { label: 'Ausente', value: 'absent' },
-                { label: 'Justificado', value: 'justified' }
-              ]}
+              options={STATUS_OPTIONS}
             />
 
             <Input
-              label="Justificação / Nota"
-              placeholder="Ex: Esquecimento do cartão"
+              label="Justificação"
+              placeholder="Opcional..."
               value={form.justification}
               onChangeText={t => setForm(f => ({ ...f, justification: t }))}
               multiline
               numberOfLines={3}
             />
 
-            <View className="mt-4 mb-10">
+            <View className="mt-8 mb-10">
               <Button
-                title="Registar Ponto Manual"
+                title="Salvar Registo"
                 variant="primary"
-                onPress={handleManualEntry}
+                onPress={handleManualSubmit}
+                className="h-14 rounded-2xl"
               />
             </View>
           </ScrollView>
         </View>
       </BottomSheet>
+
+      {/* Detail Modal */}
+      <AttendanceDetailModal
+        visible={detailVisible}
+        onClose={() => setDetailVisible(false)}
+        attendance={selectedRecord}
+      />
     </Screen>
   )
 }

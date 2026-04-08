@@ -1,52 +1,63 @@
 import { supabase } from '@/services/supabase'
 import { db } from '@/database/sqlite'
+import { logger } from '@/utils/logger'
+import { ALLOWED_SYNC_TABLES, buildSafeInsert } from '@/utils/syncData'
 
 export const realtimeService = {
   subscribe: (companyId: string, onUpdate: () => void) => {
-    console.log('🔌 Initializing Realtime Sync for company:', companyId)
+    logger.debug('🔌 Realtime Sync iniciado para empresa:', companyId)
 
     const channel = supabase
-      .channel('db-changes')
+      .channel(`db-changes-${companyId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-        },
-        async (payload) => {
+        { event: '*', schema: 'public' },
+        (payload) => {
           const { eventType, table, new: newRecord, old: oldRecord } = payload
 
-          // Verify if the record belongs to the same company
-          if (newRecord && (newRecord as any).company_id !== companyId) return
+          // Security: only process tables in the whitelist
+          if (!ALLOWED_SYNC_TABLES.has(table)) {
+            logger.warn(`[realtime] Tabela ignorada: "${table}"`)
+            return
+          }
+
+          // Security: only process records belonging to this company
+          if (newRecord && (newRecord as Record<string, unknown>).company_id !== companyId) return
 
           try {
             if (eventType === 'INSERT' || eventType === 'UPDATE') {
-              const record = newRecord as any
-              const fields = Object.keys(record)
-              const placeholders = fields.map(() => '?').join(', ')
-              const values = fields.map(f => record[f])
-
-              const query = `INSERT OR REPLACE INTO ${table} (${fields.join(', ')}) VALUES (${placeholders})`
-              db.runSync(query, values)
-              console.log(`✅ Realtime: ${table} ${eventType} successful`)
+              const record = newRecord as Record<string, unknown>
+              const safe = buildSafeInsert(table, record)
+              if (!safe) {
+                logger.warn(`[realtime] Sem colunas válidas para ${table}`)
+                return
+              }
+              db.runSync(
+                `INSERT OR REPLACE INTO ${table} (${safe.fields.join(', ')}) VALUES (${safe.placeholders})`,
+                safe.values
+              )
+              logger.debug(`✅ Realtime ${eventType}: ${table}`)
             } else if (eventType === 'DELETE') {
-              const query = `DELETE FROM ${table} WHERE id = ?`
-              db.runSync(query, [(oldRecord as any).id])
-              console.log(`✅ Realtime: ${table} DELETE successful`)
+              const id = (oldRecord as Record<string, unknown> | undefined)?.id
+              if (!id || typeof id !== 'string') {
+                logger.warn(`[realtime] DELETE em "${table}" sem id válido no oldRecord`)
+                return
+              }
+              db.runSync(`DELETE FROM ${table} WHERE id = ?`, [id as string])
+              logger.debug(`✅ Realtime DELETE: ${table}`)
             }
 
-            // Trigger UI refresh
             onUpdate()
           } catch (e) {
-            console.error(`❌ Realtime error for table ${table}:`, e)
+            logger.error(`[realtime] Erro na tabela "${table}":`, e)
           }
         }
       )
       .subscribe()
 
     return () => {
-      console.log('🔌 Unsubscribing Realtime Sync')
+      logger.debug('🔌 Realtime Sync encerrado')
       supabase.removeChannel(channel)
     }
-  }
+  },
 }

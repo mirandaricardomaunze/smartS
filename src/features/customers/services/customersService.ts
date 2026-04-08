@@ -12,7 +12,20 @@ export const customersService = {
     return customerRepository.getAll(activeCompanyId, limit, offset)
   },
 
-  create(data: Omit<Customer, 'id' | 'created_at' | 'synced'>): Customer {
+  getById(id: string): (Customer & { order_count: number }) | null {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return null
+    return customerRepository.getById(activeCompanyId, id)
+  },
+
+  getRecentOrders(customerId: string, limit: number = 5): any[] {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+    const { orderRepository } = require('@/repositories/orderRepository')
+    return orderRepository.getByCustomerId(activeCompanyId, customerId, limit)
+  },
+
+  create(data: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'synced'>): Customer {
     const { user } = useAuthStore.getState()
     // Customers creation allowed for Admin, Manager and Operator (it's crucial for POS sales)
     if (!user || (!hasPermission(user.role, 'create_products') && !hasPermission(user.role, 'manage_movements'))) {

@@ -3,6 +3,7 @@ import { useAuthStore } from '@/features/auth/store/authStore'
 import { usePOSStore } from '../store/posStore'
 import { useToastStore } from '@/store/useToastStore'
 import { Order, OrderItem } from '@/types'
+import { notificationService } from '@/features/notifications/services/notificationService'
 
 export const posService = {
   /**
@@ -46,7 +47,12 @@ export const posService = {
 
     try {
       const order = await orderService.processPosSale(orderData, items)
-      
+
+      // Check for low stock alerts immediately for each product sold
+      for (const item of items) {
+        notificationService.checkLowStockForProduct(user.company_id, item.product_id).catch(console.error)
+      }
+
       // Clear local state on success
       clearCart()
       

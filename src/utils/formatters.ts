@@ -1,24 +1,27 @@
-export const formatCurrency = (value: number, currency: string = 'EUR'): string => {
-  return new Intl.NumberFormat('pt-PT', {
+export const formatCurrency = (value: number, currency: string = 'USD', locale: string = 'en-US'): string => {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency,
   }).format(value)
 }
 
-export const getCurrencySymbol = (currency: string = 'EUR'): string => {
+export const getCurrencySymbol = (currency: string = 'USD'): string => {
   switch (currency) {
     case 'MZN': return 'MT'
     case 'AOA': return 'Kz'
     case 'EUR': return '€'
     case 'USD': return '$'
     case 'BRL': return 'R$'
+    case 'ZAR': return 'R'
     default: return currency
   }
 }
 
-export const formatDate = (dateString: string): string => {
+export const formatDate = (dateString: string | null | undefined, locale: string = 'en-US'): string => {
+  if (!dateString) return '---'
   const date = new Date(dateString)
-  return new Intl.DateTimeFormat('pt-PT', {
+  if (isNaN(date.getTime())) return '---'
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -27,9 +30,11 @@ export const formatDate = (dateString: string): string => {
   }).format(date)
 }
 
-export const formatShortDate = (dateString: string): string => {
+export const formatShortDate = (dateString: string | null | undefined, locale: string = 'en-US'): string => {
+  if (!dateString) return '---'
   const date = new Date(dateString)
-  return new Intl.DateTimeFormat('pt-PT', {
+  if (isNaN(date.getTime())) return '---'
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

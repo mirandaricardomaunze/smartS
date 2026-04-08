@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native'
-import { X, Building2, Upload, Camera } from 'lucide-react-native'
+import { useCountryConfig } from '@/hooks/useCountryConfig'
+import { X, Building2, Upload, Camera, Edit2, Plus } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -18,6 +19,7 @@ interface CompanyFormModalProps {
 }
 
 export default function CompanyFormModal({ visible, onClose, onSave, initialData }: CompanyFormModalProps) {
+  const countryConfig = useCountryConfig()
   const [formData, setFormData] = useState({
     name: '',
     nif: '',
@@ -153,7 +155,7 @@ export default function CompanyFormModal({ visible, onClose, onSave, initialData
               />
 
               <Input
-                label="NIF / NUIT / Contribuinte"
+                label={countryConfig.tax.taxIdLabel}
                 placeholder="Ex: 500123456"
                 value={formData.nif}
                 onChangeText={text => setFormData({ ...formData, nif: text })}
@@ -196,6 +198,7 @@ export default function CompanyFormModal({ visible, onClose, onSave, initialData
               title={initialData ? 'Atualizar Empresa' : 'Criar Empresa'}
               onPress={handleSave}
               isLoading={isSubmitting}
+              icon={initialData ? <Edit2 size={20} color="white" /> : <Plus size={20} color="white" />}
               className="h-14 rounded-2xl shadow-lg shadow-primary/30"
             />
           </View>

@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useProducts } from '@/features/products/hooks/useProducts'
 import { useCompanyStore } from '@/store/companyStore'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { productsRepository } from '@/repositories/productsRepository'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import Button from '@/components/ui/Button'
@@ -31,6 +33,7 @@ export default function CreateProductScreen() {
   const router = useRouter()
   const { createProduct } = useProducts()
   const { activeCompanyId } = useCompanyStore()
+  const { canAdd, limitMessage } = usePlanLimits()
   const { barcode } = useLocalSearchParams<{ barcode: string }>()
   const { formatCurrency } = useFormatter()
   
@@ -118,6 +121,19 @@ export default function CreateProductScreen() {
   }
 
   const handleSave = async () => {
+    if (!activeCompanyId) {
+      showToast('Nenhuma empresa activa. Reinicie a aplicação.', 'error')
+      return
+    }
+
+    // Verificar limite de produtos do plano
+    const currentProductCount = productsRepository.getAll(activeCompanyId, 99999, 0).length
+    if (!canAdd('maxProducts', currentProductCount)) {
+      showToast(limitMessage('maxProducts'), 'warning')
+      router.push('/(app)/settings/subscription')
+      return
+    }
+
     if (!formData.name || !formData.sku || !formData.category_id) {
       showToast('Por favor, preencha todos os campos obrigatórios (Nome, SKU, Categoria).', 'warning')
       return
@@ -138,10 +154,11 @@ export default function CreateProductScreen() {
     try {
       setIsSubmitting(true)
       await createProduct({
-        company_id: activeCompanyId!,
+        company_id: activeCompanyId,
         name: formData.name,
         sku: formData.sku,
         barcode: formData.barcode || null,
+        reference: null,
         category_id: formData.category_id,
         category: formData.category_name,
         brand: null,
@@ -149,20 +166,20 @@ export default function CreateProductScreen() {
         units_per_box: null,
         boxes_per_pallet: null,
         minimum_stock: parseInt(formData.minimum_stock) || 0,
-        current_stock: totalBatchStock, // Initial stock is the sum of batches
+        current_stock: totalBatchStock,
         purchase_price: parseFloat(formData.purchase_price) || 0,
         sale_price: parseFloat(formData.sale_price) || 0,
         tax_rate: parseFloat(formData.tax_rate) || 0,
         supplier_id: formData.supplier_id || null,
         description: null,
         image_url: null,
-        is_active: 1
-      } as any, batches) // Service needs to be updated to handle batches
+        is_active: 1,
+      }, batches)
       
       showToast('Produto criado com sucesso', 'success')
       router.back()
     } catch (e: any) {
-      showToast('Falha ao criar produto', 'error')
+      showToast(e.message || 'Falha ao criar produto', 'error')
     } finally {
       setIsSubmitting(false)
     }

@@ -1,1 +1,0 @@
-﻿src/features/auth/services/authService.ts(36,13): error TS2353: Object literal may only specify known properties, and 'company' does not exist in type 'Omit<User, "synced" | "id" | "created_at" | "updated_at"> & { id?: string | undefined; }'.

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react'
-import { View, Text, Alert, TouchableOpacity, Modal, FlatList } from 'react-native'
+import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native'
+import { MovementType } from '@/types'
 import { useToastStore } from '@/store/useToastStore'
+import { useConfirmStore } from '@/store/useConfirmStore'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useMovements } from '@/features/movements/hooks/useMovements'
 import { useProducts } from '@/features/products/hooks/useProducts'
@@ -10,6 +12,7 @@ import Button from '@/components/ui/Button'
 import FormField from '@/components/forms/FormField'
 import Input from '@/components/ui/Input'
 import { PackageOpen, X, Code } from 'lucide-react-native'
+
 
 export default function CreateMovementScreen() {
   const router = useRouter()
@@ -22,9 +25,11 @@ export default function CreateMovementScreen() {
   const [isProductModalOpen, setProductModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   
+  const MOVEMENT_TYPES: MovementType[] = ['entry', 'exit', 'adjustment']
+
   const [formData, setFormData] = useState({
     product_id: productId || '',
-    type: 'entry',
+    type: 'entry' as MovementType,
     quantity: '',
     reason: '',
   })
@@ -51,6 +56,11 @@ export default function CreateMovementScreen() {
       return
     }
 
+    if (!MOVEMENT_TYPES.includes(formData.type)) {
+      useToastStore.getState().show('Tipo de movimento inválido.', 'error')
+      return
+    }
+
     const qty = parseInt(formData.quantity)
     if (isNaN(qty) || qty <= 0) {
        useToastStore.getState().show('A quantidade deve ser maior que zero.', 'warning')
@@ -64,30 +74,39 @@ export default function CreateMovementScreen() {
         }
     }
 
-    Alert.alert('Confirmar Registro', `Deseja registrar esta ${formData.type === 'entry' ? 'entrada' : formData.type === 'exit' ? 'saída' : 'operação'} de ${qty} unidades?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { 
-        text: 'Confirmar', 
-        onPress: async () => {
-            try {
-              setIsSubmitting(true)
-              await createMovement({
-                product_id: formData.product_id,
-                type: formData.type as any,
-                quantity: qty,
-                reason: formData.reason || null
-              })
-              Alert.alert('Sucesso', 'Movimento registado com sucesso!', [
-                { text: 'OK', onPress: () => router.back() }
-              ])
-            } catch (e: any) {
-              Alert.alert('Erro', e.message || 'Falha ao registar movimento')
-            } finally {
-              setIsSubmitting(false)
-            }
+    useConfirmStore.getState().show({
+      title: 'Confirmar Registro',
+      message: `Deseja registrar esta ${formData.type === 'entry' ? 'entrada' : formData.type === 'exit' ? 'saída' : 'operação'} de ${qty} unidades?`,
+      confirmLabel: 'Confirmar',
+      onConfirm: async () => {
+        try {
+          setIsSubmitting(true)
+          await createMovement({
+            product_id: formData.product_id,
+            type: formData.type,
+            quantity: qty,
+            reason: formData.reason || null,
+          })
+          useConfirmStore.getState().show({
+            title: 'Sucesso',
+            message: 'Movimento registado com sucesso!',
+            confirmLabel: 'OK',
+            showCancel: false,
+            onConfirm: () => router.back()
+          })
+        } catch (e: any) {
+          useConfirmStore.getState().show({
+            title: 'Erro',
+            message: e.message || 'Falha ao registar movimento',
+            confirmLabel: 'OK',
+            showCancel: false,
+            onConfirm: () => {}
+          })
+        } finally {
+          setIsSubmitting(false)
         }
       }
-    ])
+    })
   }
 
   const TypeButton = ({ type, label }: { type: string, label: string }) => {

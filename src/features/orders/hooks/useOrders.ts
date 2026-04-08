@@ -1,99 +1,117 @@
-import { useState, useCallback } from 'react'
-import { orderRepository } from '@/repositories/orderRepository'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { orderService } from '@/services/orderService'
 import { Order, OrderItem } from '@/types'
 import { useCompanyStore } from '@/store/companyStore'
 import { useSyncStore } from '@/features/sync/store/syncStore'
-import { useEffect } from 'react'
+import { logger } from '@/utils/logger'
+
+const PAGE_SIZE = 25
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
-  const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const PAGE_SIZE = 20
+  const pageRef = useRef(0)
+  const isMounted = useRef(true)
 
-  const fetchOrders = useCallback((isInitial = true) => {
+  const activeCompanyId = useCompanyStore(state => state.activeCompanyId)
+  const lastUpdate = useSyncStore(state => state.lastUpdate)
+
+  useEffect(() => {
+    isMounted.current = true
+    return () => { isMounted.current = false }
+  }, [])
+
+  const fetchOrders = useCallback((isInitial = true, showFullLoading = true) => {
     if (!activeCompanyId) return
-    
-    setIsLoading(true)
+
+    if (isInitial && showFullLoading && isMounted.current) setIsLoading(true)
+
     try {
-      const currentOffset = isInitial ? 0 : page * PAGE_SIZE
-      const data = orderService.getAll(PAGE_SIZE, currentOffset)
-      
-      if (isInitial) {
-        setOrders(data)
-        setPage(1)
-      } else {
-        setOrders(prev => [...prev, ...data])
-        setPage(prev => prev + 1)
+      if (isInitial) pageRef.current = 0
+
+      const offset = pageRef.current * PAGE_SIZE
+      const data = orderService.getAll(PAGE_SIZE, offset)
+
+      if (isMounted.current) {
+        if (isInitial) {
+          setOrders(data)
+        } else {
+          setOrders(prev => [...prev, ...data])
+        }
+        setHasMore(data.length === PAGE_SIZE)
+        pageRef.current += 1
       }
-      
-      setHasMore(data.length === PAGE_SIZE)
+    } catch (e) {
+      logger.error('[useOrders] fetchOrders:', e)
     } finally {
-      setIsLoading(false)
+      if (isInitial && showFullLoading && isMounted.current) setIsLoading(false)
     }
-  }, [activeCompanyId, page])
+  }, [activeCompanyId])
 
   const loadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      fetchOrders(false)
-    }
+    if (!isLoading && hasMore) fetchOrders(false)
   }, [isLoading, hasMore, fetchOrders])
 
-  // Initial fetch
   useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+    fetchOrders(true, true)
+  }, [activeCompanyId, fetchOrders])
 
-  // Listen for realtime updates
-  const lastUpdate = useSyncStore(state => state.lastUpdate)
   useEffect(() => {
-    if (lastUpdate > 0) fetchOrders()
+    if (lastUpdate <= 0) return
+    const timeout = setTimeout(() => fetchOrders(true, false), 500)
+    return () => clearTimeout(timeout)
   }, [lastUpdate, fetchOrders])
 
-  const createOrder = async (orderData: any, items: any[]) => {
-    setIsLoading(true)
+  const createOrder = useCallback(async (
+    orderData: Omit<Order, 'id' | 'created_at' | 'updated_at' | 'synced'>,
+    items: Omit<OrderItem, 'id' | 'order_id'>[]
+  ) => {
+    if (isMounted.current) setIsLoading(true)
     try {
       const order = await orderService.createProfessionalOrder(orderData, items)
-      fetchOrders()
+      fetchOrders(true, false)
       return order
+    } catch (e) {
+      logger.error('[useOrders] createOrder:', e)
+      throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
-  }
+  }, [fetchOrders])
 
-  const cancelOrder = async (orderId: string, userId: string) => {
-    if (activeCompanyId) {
-      await orderService.cancelOrder(activeCompanyId, orderId, userId)
-      fetchOrders()
-    }
-  }
-
-  const startPicking = async (orderId: string) => {
-    if (activeCompanyId) {
+  const startPicking = useCallback(async (orderId: string) => {
+    if (!activeCompanyId) return
+    try {
       await orderService.startPicking(activeCompanyId, orderId)
-      fetchOrders()
+      fetchOrders(true, false)
+    } catch (e) {
+      logger.error('[useOrders] startPicking:', e)
+      throw e
     }
-  }
+  }, [activeCompanyId, fetchOrders])
 
-  const finishOrder = async (orderId: string) => {
-    if (activeCompanyId) {
+  const finishOrder = useCallback(async (orderId: string) => {
+    if (!activeCompanyId) return
+    try {
       await orderService.finishOrder(activeCompanyId, orderId)
-      fetchOrders()
+      fetchOrders(true, false)
+    } catch (e) {
+      logger.error('[useOrders] finishOrder:', e)
+      throw e
     }
-  }
+  }, [activeCompanyId, fetchOrders])
 
-  return {
-    orders,
-    isLoading,
-    fetchOrders,
-    createOrder,
-    cancelOrder,
-    startPicking,
-    finishOrder,
-    loadMore,
-    hasMore
-  }
+  const cancelOrder = useCallback(async (orderId: string, userId: string) => {
+    if (!activeCompanyId) return
+    try {
+      await orderService.cancelOrder(activeCompanyId, orderId, userId)
+      fetchOrders(true, false)
+    } catch (e) {
+      logger.error('[useOrders] cancelOrder:', e)
+      throw e
+    }
+  }, [activeCompanyId, fetchOrders])
+
+  return { orders, isLoading, hasMore, fetchOrders, loadMore, createOrder, startPicking, finishOrder, cancelOrder }
 }

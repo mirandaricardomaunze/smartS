@@ -4,29 +4,78 @@ import { useAuthStore } from '@/features/auth/store/authStore'
 import { useCompanyStore } from '@/store/companyStore'
 
 export const dashboardService = {
-  getStats(): { totalProducts: number; lowStock: number; newMovementsToday: number } {
-    const { user } = useAuthStore.getState()
-    // Dashboard is generally visible, but let's assume if they can't even view reports, they might not see much or maybe everyone sees it.
-    // For now, no strict hard block, just standard stats
+  getStats(): { totalProducts: number; lowStock: number; newMovementsToday: number; inventoryValue: number; totalEntries: number; totalExits: number } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { totalProducts: 0, lowStock: 0, newMovementsToday: 0, inventoryValue: 0, totalEntries: 0, totalExits: 0 }
     
-    const totalProducts = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM products WHERE is_active = 1')?.count || 0
-    const lowStock = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM products WHERE is_active = 1 AND current_stock <= minimum_stock')?.count || 0
+    const totalProducts = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM products WHERE company_id = ? AND is_active = 1', [activeCompanyId])?.count || 0
+    const lowStock = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM products WHERE company_id = ? AND is_active = 1 AND current_stock <= minimum_stock', [activeCompanyId])?.count || 0
     
     const today = new Date().toISOString().split('T')[0]
-    const newMovementsToday = db.getFirstSync<{ count: number }>(`SELECT COUNT(*) as count FROM movements WHERE created_at LIKE '${today}%'`)?.count || 0
+    const newMovementsToday = db.getFirstSync<{ count: number }>(`SELECT COUNT(*) as count FROM stock_movements WHERE company_id = ? AND created_at LIKE '${today}%'`, [activeCompanyId])?.count || 0
 
-    return { totalProducts, lowStock, newMovementsToday }
+    const inventoryValue = db.getFirstSync<{ total: number }>(
+      'SELECT SUM(current_stock * purchase_price) as total FROM products WHERE company_id = ? AND is_active = 1',
+      [activeCompanyId]
+    )?.total || 0
+
+    const moveStats = db.getFirstSync<{ entries: number; exits: number }>(
+      `SELECT 
+        SUM(CASE WHEN type = 'entry' THEN quantity ELSE 0 END) as entries,
+        SUM(CASE WHEN type IN ('exit', 'sale') THEN quantity ELSE 0 END) as exits
+       FROM stock_movements WHERE company_id = ?`,
+      [activeCompanyId]
+    ) || { entries: 0, exits: 0 }
+
+    return { 
+      totalProducts, 
+      lowStock, 
+      newMovementsToday, 
+      inventoryValue,
+      totalEntries: moveStats.entries,
+      totalExits: moveStats.exits
+    }
+  },
+
+  getTodaySummary(): { revenue: number; profit: number; orderCount: number } {
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return { revenue: 0, profit: 0, orderCount: 0 }
+
+    const today = new Date().toISOString().split('T')[0]
+    
+    const sales = db.getFirstSync<{ revenue: number; count: number }>(
+      "SELECT SUM(total_amount) as revenue, COUNT(*) as count FROM orders WHERE company_id = ? AND status = 'completed' AND created_at LIKE ?",
+      [activeCompanyId, `${today}%`]
+    ) || { revenue: 0, count: 0 }
+
+    const profit = db.getFirstSync<{ profit: number }>(
+      `SELECT SUM((oi.unit_price - p.purchase_price) * oi.quantity) as profit
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       JOIN products p ON oi.product_id = p.id
+       WHERE o.company_id = ? AND o.status = 'completed' AND o.created_at LIKE ?`,
+      [activeCompanyId, `${today}%`]
+    )?.profit || 0
+
+    return { 
+      revenue: sales.revenue || 0, 
+      profit: profit || 0, 
+      orderCount: sales.count || 0 
+    }
   },
   
   getTopMovedProducts(): any[] {
-     return db.getAllSync<any>(`
-        SELECT p.name, SUM(m.quantity) as total_qty
-        FROM movements m
-        JOIN products p ON m.product_id = p.id
-        GROUP BY p.id
-        ORDER BY total_qty DESC
-        LIMIT 5
-     `)
+    const { activeCompanyId } = useCompanyStore.getState()
+    if (!activeCompanyId) return []
+    return db.getAllSync<any>(`
+       SELECT p.name, SUM(m.quantity) as total_qty
+       FROM stock_movements m
+       JOIN products p ON m.product_id = p.id
+       WHERE m.company_id = ?
+       GROUP BY p.id
+       ORDER BY total_qty DESC
+       LIMIT 20
+    `, [activeCompanyId])
   },
 
   getSalesPerformance(): { revenue: number; profit: number; orderCount: number; volumeLabels: string[]; volumeData: number[] } {
@@ -89,17 +138,17 @@ export const dashboardService = {
        WHERE o.company_id = ? AND o.status = 'completed'
        GROUP BY p.id
        ORDER BY quantity DESC
-       LIMIT 5`,
+       LIMIT 20`,
       [activeCompanyId]
     )
   },
 
-  getLowStockAlerts(): { name: string; current_stock: number; minimum_stock: number }[] {
+  getLowStockAlerts(): { id: string; name: string; current_stock: number; minimum_stock: number }[] {
     const { activeCompanyId } = useCompanyStore.getState()
     if (!activeCompanyId) return []
 
-    return db.getAllSync<{ name: string; current_stock: number; minimum_stock: number }>(
-      'SELECT name, current_stock, minimum_stock FROM products WHERE company_id = ? AND current_stock <= minimum_stock AND is_active = 1 LIMIT 10',
+    return db.getAllSync<{ id: string; name: string; current_stock: number; minimum_stock: number }>(
+      'SELECT id, name, current_stock, minimum_stock FROM products WHERE company_id = ? AND current_stock <= minimum_stock AND is_active = 1 LIMIT 100',
       [activeCompanyId]
     )
   },
@@ -148,7 +197,7 @@ export const dashboardService = {
        WHERE o.company_id = ? AND o.status = 'completed' AND o.created_at >= date('now', '-30 days')
        GROUP BY c.id
        ORDER BY total DESC
-       LIMIT 5`,
+       LIMIT 20`,
       [activeCompanyId]
     )
 
@@ -201,7 +250,7 @@ export const dashboardService = {
        WHERE p.company_id = ? AND p.is_active = 1
        GROUP BY c.id
        ORDER BY value DESC
-       LIMIT 5`,
+       LIMIT 20`,
       [activeCompanyId]
     )
 
@@ -256,7 +305,7 @@ export const dashboardService = {
        WHERE o.company_id = ? AND o.status = 'completed' AND p.purchase_price > 0
        GROUP BY c.id
        ORDER BY margin DESC
-       LIMIT 5`,
+       LIMIT 20`,
       [activeCompanyId]
     )
 

@@ -1,34 +1,37 @@
 import { useState, useEffect, useCallback } from 'react'
 import { notesService } from '../services/notesService'
-import { Note } from '@/types'
+import { Note, CreateNoteData } from '@/types'
+import { logger } from '@/utils/logger'
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     try {
       setIsLoading(true)
       setError(null)
-      const data = notesService.getAll()
-      setNotes(data)
+      setNotes(notesService.getAll())
     } catch (e) {
-      setError('Erro ao carregar notas')
+      logger.error('[useNotes] load:', e)
+      setError(e instanceof Error ? e.message : 'Erro ao carregar notas')
     } finally {
       setIsLoading(false)
     }
   }, [])
 
+  // load has stable identity (empty deps) so this only runs once on mount
   useEffect(() => { load() }, [load])
 
-  const createNote = useCallback(async (data: Parameters<typeof notesService.create>[0]) => {
+  const createNote = useCallback(async (data: CreateNoteData & { number: string }) => {
     try {
       const note = notesService.create(data)
       setNotes(prev => [note, ...prev])
       return note
-    } catch (e: any) {
-      const message = e.message || 'Erro ao criar nota'
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro ao criar nota'
+      logger.error('[useNotes] createNote:', e)
       setError(message)
       throw e
     }

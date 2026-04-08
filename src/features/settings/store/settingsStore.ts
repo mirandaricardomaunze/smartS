@@ -10,11 +10,15 @@ interface SettingsState {
 
 const defaultSettings: Settings = {
   dark_mode: 0,
-  currency: 'EUR',
+  currency: 'MZN',
   language: 'pt',
   unit_of_measure: 'un',
   include_tax: 1,
   biometrics_enabled: 0,
+  onboarding_completed: 0,
+  country_code: 'MZ',
+  auto_backup_enabled: 1,
+  auto_backup_interval: '24h',
 }
 
 export const useSettingsStore = create<SettingsState>()(

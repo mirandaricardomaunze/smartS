@@ -3,6 +3,7 @@ import { View, Text, Dimensions, useColorScheme } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import Card from '@/components/ui/Card';
 import { Users, CheckCircle2 } from 'lucide-react-native';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface AttendanceTrendChartProps {
   labels: string[];
@@ -14,35 +15,42 @@ export default function AttendanceTrendChart({ labels, data }: AttendanceTrendCh
   const isDark = colorScheme === 'dark';
   const screenWidth = Dimensions.get('window').width;
 
+  if (labels.length === 0) {
+    return <EmptyState title="Sem dados de assiduidade" description="Registe presenças no módulo de RH para visualizar a taxa de presença semanal." />
+  }
+
   const chartConfig = {
     backgroundColor: 'transparent',
     backgroundGradientFrom: isDark ? '#0f172a' : '#ffffff',
     backgroundGradientTo: isDark ? '#0f172a' : '#ffffff',
+    backgroundGradientFromOpacity: 0,
+    backgroundGradientToOpacity: 0,
     decimalPlaces: 0,
     color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`, // Indigo for Team
     labelColor: (opacity = 1) => isDark ? `rgba(148, 163, 184, ${opacity})` : `rgba(71, 85, 105, ${opacity})`,
     style: { borderRadius: 16 },
-    barPercentage: 0.6,
+    barPercentage: 0.5,
+    propsForLabels: { fontSize: 10 },
     propsForBackgroundLines: { strokeDasharray: '', stroke: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
   };
 
   const chartData = {
-    labels: labels.length > 0 ? labels : ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'],
-    datasets: [{ data: data.length > 0 ? data : [0, 0, 0, 0, 0, 0, 0] }]
+    labels,
+    datasets: [{ data }]
   };
 
   const avgAttendance = data.length > 0 ? (data.reduce((a, b) => a + b, 0) / data.length) : 0;
 
   return (
-    <Card variant="premium" className="p-4 mb-10 rounded-[24px]">
-      <View className="flex-row justify-between items-center mb-6">
-        <View>
-          <Text className="text-[10px] font-black text-slate-500 uppercase tracking-[2px] mb-1">Assiduidade Semanal</Text>
-          <Text className="text-slate-900 dark:text-white font-black text-lg">Presença da Equipa</Text>
+    <View className="flex-1">
+      <View className="flex-row items-center mb-6">
+        <View className="flex-1 mr-2">
+          <Text className="text-[10px] font-black text-slate-500 uppercase tracking-[2px] mb-1">Análise Semanal</Text>
+          <Text className="text-slate-900 dark:text-white font-black text-base" numberOfLines={1}>Taxa de Presença</Text>
         </View>
-        <View className="items-end">
-            <Text className="text-[10px] font-black text-slate-500 uppercase tracking-[2px]">Média Semanal</Text>
-            <Text className={`font-black text-xs ${avgAttendance >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>
+        <View className={`max-w-[120px] ${avgAttendance >= 80 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'} px-3 py-2 rounded-2xl items-end border`}>
+            <Text className={`text-[10px] font-black uppercase tracking-[1px] ${avgAttendance >= 80 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} numberOfLines={1}>Média</Text>
+            <Text className={`font-black text-xs ${avgAttendance >= 80 ? 'text-emerald-500' : 'text-amber-500'}`} numberOfLines={1}>
                 {avgAttendance.toFixed(1)}%
             </Text>
         </View>
@@ -57,7 +65,8 @@ export default function AttendanceTrendChart({ labels, data }: AttendanceTrendCh
         style={{
           marginVertical: 8,
           borderRadius: 16,
-          paddingRight: 35
+          paddingRight: 10,
+          marginLeft: -15
         }}
         withInnerLines={false}
         withVerticalLabels
@@ -71,9 +80,9 @@ export default function AttendanceTrendChart({ labels, data }: AttendanceTrendCh
             <Users size={18} color="#10b981" />
          </View>
          <Text className="text-slate-600 dark:text-slate-300 text-[11px] font-medium leading-[16px] flex-1">
-            Mantenha a monitorização constante para garantir o cumprimento das escalas moçambicanas e otimizar o processamento de salários.
+            Mantenha a monitorização constante para garantir o cumprimento das escalas e otimizar o processamento de salários.
          </Text>
       </View>
-    </Card>
+    </View>
   );
 }

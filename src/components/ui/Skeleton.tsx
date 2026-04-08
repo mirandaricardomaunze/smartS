@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react'
-import { View, StyleSheet, ViewStyle, Dimensions } from 'react-native'
+import { View, StyleSheet, ViewStyle, useWindowDimensions } from 'react-native'
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
   withRepeat, 
   withTiming, 
   interpolate,
-  Extrapolate
+  Extrapolation
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 
@@ -27,6 +27,7 @@ export default function Skeleton({
   className = '',
   style
 }: SkeletonProps) {
+  const { width: windowWidth } = useWindowDimensions()
   const translateX = useSharedValue(-1)
 
   useEffect(() => {
@@ -37,17 +38,10 @@ export default function Skeleton({
     )
   }, [])
 
-  // Determine the actual numeric width for interpolation if width is a percentage
-  const actualWidth = typeof width === 'string' && width.endsWith('%')
-    ? (parseFloat(width) / 100) * Dimensions.get('window').width // This is a simplification; ideally, it should be parent's width
-    : (width as number); // Cast to number if it's not a percentage string
-
   const animatedStyle = useAnimatedStyle(() => {
-    // If width is a string like '100%', we need a numeric value for interpolation.
-    // For simplicity, we'll use the screen width as a fallback for percentage widths.
-    // In a real app, you might want to measure the parent container's width.
+    // Determine the actual numeric width for interpolation
     const interpolatedWidth = typeof width === 'string' && width.endsWith('%')
-      ? Dimensions.get('window').width // Fallback for percentage width
+      ? (parseFloat(width) / 100) * windowWidth
       : (width as number);
 
     return {
@@ -56,13 +50,13 @@ export default function Skeleton({
           translateX: interpolate(
             translateX.value,
             [-1, 1],
-            [-interpolatedWidth, interpolatedWidth], // Use numeric values for interpolation
-            Extrapolate.CLAMP
+            [-interpolatedWidth, interpolatedWidth],
+            Extrapolation.CLAMP
           )
         }
       ]
     }
-  })
+  }, [width, windowWidth])
 
   return (
     <View 

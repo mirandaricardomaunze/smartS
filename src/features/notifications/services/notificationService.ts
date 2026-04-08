@@ -59,34 +59,56 @@ export const notificationService = {
     }
   },
 
-  /**
-   * Automatically check for low stock and generate notifications.
-   * This should be called on app start or dashboard load.
-   */
   async checkLowStockAlerts(companyId: string): Promise<void> {
     const lowStockProducts = db.getAllSync<any>(
-      'SELECT name, current_stock, minimum_stock FROM products WHERE company_id = ? AND is_active = 1 AND current_stock <= minimum_stock',
+      'SELECT name, current_stock, minimum_stock, unit FROM products WHERE company_id = ? AND is_active = 1 AND current_stock <= minimum_stock',
       [companyId]
     )
-
+    
     for (const product of lowStockProducts) {
-      const title = 'Alerta de Stock Baixo'
-      const message = `O produto "${product.name}" está com stock baixo (${product.current_stock} ${product.unit || 'un'}).`
-      
-      // Check if a similar unread notification already exists to avoid spamming
-      const existing = db.getFirstSync<any>(
-        'SELECT id FROM notifications WHERE title = ? AND message = ? AND is_read = 0',
-        [title, message]
-      )
+      await this.notifyIfLowStock(companyId, product)
+    }
+  },
 
-      if (!existing) {
-        await this.create({
-          company_id: companyId,
-          title,
-          message,
-          type: 'warning'
-        })
-      }
+  async checkLowStockForProduct(companyId: string, productId: string): Promise<void> {
+    const product = db.getFirstSync<any>(
+      'SELECT name, current_stock, minimum_stock, unit FROM products WHERE id = ? AND company_id = ?',
+      [productId, companyId]
+    )
+
+    if (product && product.current_stock <= product.minimum_stock) {
+      await this.notifyIfLowStock(companyId, product)
+    }
+  },
+
+  async notifyIfLowStock(companyId: string, product: any): Promise<void> {
+    const title = 'Alerta de Stock Crítico'
+    const message = `"${product.name}" tem apenas ${product.current_stock} ${product.unit || 'un'} em stock. Reponha já!`
+    
+    // Check for unread notification for THIS product today
+    const existing = db.getFirstSync<any>(
+      'SELECT id FROM notifications WHERE title = ? AND message LIKE ? AND is_read = 0 AND date(created_at) = date("now")',
+      [title, `"${product.name}"%`]
+    )
+
+    if (!existing) {
+      await this.create({
+        company_id: companyId,
+        title,
+        message,
+        type: 'warning'
+      })
+
+      // Immediate Push Notification
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `⚠️ ${title}`,
+          body: message,
+          data: { screen: 'inventory' },
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null,
+      });
     }
   },
 
@@ -184,5 +206,39 @@ export const notificationService = {
       message,
       { screen: 'dashboard' }
     );
+  },
+
+  async checkTrialNotifications(trialStartedAt: string, companyId: string): Promise<void> {
+    const start = new Date(trialStartedAt)
+    const now = new Date()
+    const diffDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+
+    const milestones = [
+      { day: 7, title: '7 dias com SmartS!', body: 'Já usas o app há 7 dias! Vê o que o plano Pro oferece.' },
+      { day: 20, title: 'Trial em curso', body: 'Faltam 10 dias do teu trial. Escolhe o teu plano.' },
+      { day: 27, title: 'Trial quase a terminar', body: 'O teu trial termina em 3 dias. Não percas os teus dados!' },
+      { day: 28, title: 'Trial quase a terminar', body: 'O teu trial termina em 2 dias. Não percas os teus dados!' },
+      { day: 30, title: 'Trial Expirado', body: 'O teu trial expirou. Subscreve para continuar.' },
+    ]
+
+    for (const m of milestones) {
+      if (diffDays === m.day) {
+        const existing = db.getFirstSync<any>(
+          'SELECT id FROM notifications WHERE title = ? AND company_id = ? AND date(created_at) = date("now")',
+          [m.title, companyId]
+        )
+
+        if (!existing) {
+          await this.create({
+            company_id: companyId,
+            title: m.title,
+            message: m.body,
+            type: m.day === 30 ? 'warning' : 'info'
+          })
+
+          await this.scheduleNotification(`🎁 ${m.title}`, m.body, { screen: 'choose-plan' })
+        }
+      }
+    }
   }
 }

@@ -2,10 +2,10 @@ import React, { useEffect, useCallback, useState } from 'react'
 import { 
   View, 
   StyleSheet, 
-  Dimensions, 
   TouchableWithoutFeedback, 
   BackHandler,
-  Platform
+  Platform,
+  useWindowDimensions
 } from 'react-native'
 import Animated, { 
   useSharedValue, 
@@ -14,13 +14,11 @@ import Animated, {
   withTiming, 
   runOnJS,
   interpolate,
-  Extrapolate
+  Extrapolation
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface BottomSheetProps {
   visible: boolean
@@ -35,6 +33,7 @@ export default function BottomSheet({
   children, 
   height = 0.85 
 }: BottomSheetProps) {
+  const { height: SCREEN_HEIGHT } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const MAX_HEIGHT = SCREEN_HEIGHT * height
   const translateY = useSharedValue(SCREEN_HEIGHT)
@@ -48,7 +47,7 @@ export default function BottomSheet({
       runOnJS(onClose)()
     })
     backdropOpacity.value = withTiming(0, { duration: 300 })
-  }, [onClose])
+  }, [onClose, SCREEN_HEIGHT])
 
   useEffect(() => {
     if (visible) {
@@ -64,7 +63,7 @@ export default function BottomSheet({
       })
       backdropOpacity.value = withTiming(0, { duration: 300 })
     }
-  }, [visible, MAX_HEIGHT])
+  }, [visible, MAX_HEIGHT, SCREEN_HEIGHT])
 
   // Back button handling on Android
   useEffect(() => {
@@ -101,7 +100,7 @@ export default function BottomSheet({
       translateY.value,
       [SCREEN_HEIGHT - MAX_HEIGHT, SCREEN_HEIGHT],
       [32, 0],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     )
 
     return {
@@ -109,7 +108,7 @@ export default function BottomSheet({
       borderTopLeftRadius: borderRadius,
       borderTopRightRadius: borderRadius,
     }
-  })
+  }, [MAX_HEIGHT, SCREEN_HEIGHT])
 
   const rBackdropStyle = useAnimatedStyle(() => {
     return {
@@ -143,12 +142,12 @@ export default function BottomSheet({
       >
         {/* Draggable Header/Handle Area */}
         <GestureDetector gesture={gesture}>
-          <Animated.View className="items-center py-3 w-full bg-transparent">
-            <View className="w-12 h-1.5 bg-primary/10 dark:bg-primary/20 rounded-full" />
+          <Animated.View className="items-center pt-4 pb-2 w-full bg-transparent">
+            <View className="w-12 h-1.5 bg-primary/20 dark:bg-primary/30 rounded-full" />
           </Animated.View>
         </GestureDetector>
         
-        <View style={{ flex: 1, paddingBottom: insets.bottom }}>
+        <View style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 20) }}>
           {children}
         </View>
       </Animated.View>

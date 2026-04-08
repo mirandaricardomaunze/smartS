@@ -2,7 +2,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, useColorSch
 import React, { useState, useMemo, useEffect } from 'react'
 import { useBiometrics } from '@/hooks/useBiometrics'
 import BiometricLock from '@/components/ui/BiometricLock'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
+
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import { 
@@ -45,7 +46,8 @@ type ModuleItem = {
 }
 
 export default function ControlCenterScreen() {
-  const router = useRouter()
+
+
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const [searchQuery, setSearchQuery] = useState('')
@@ -73,7 +75,7 @@ export default function ControlCenterScreen() {
       title: 'Base de Clientes',
       subtitle: 'Gerir CRM e contactos',
       icon: <Users size={22} color="#10b981" />,
-      route: '/customers',
+      route: '/(app)/customers',
       category: 'Parceiros e CRM',
       color: 'emerald'
     },
@@ -82,7 +84,7 @@ export default function ControlCenterScreen() {
       title: 'Fornecedores',
       subtitle: 'Gestão de compras e SRM',
       icon: <Building2 size={22} color="#10b981" />,
-      route: '/suppliers',
+      route: '/(app)/suppliers',
       category: 'Parceiros e CRM',
       color: 'emerald'
     },
@@ -91,7 +93,7 @@ export default function ControlCenterScreen() {
       title: 'Scanner de Barcode',
       subtitle: 'Entrada rápida via câmara',
       icon: <ScanLine size={22} color="#4f46e5" />,
-      route: '/scanner',
+      route: '/(app)/scanner',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -100,7 +102,7 @@ export default function ControlCenterScreen() {
       title: 'Movimentos de Stock',
       subtitle: 'Registo de entradas e saídas',
       icon: <ArrowLeftRight size={22} color="#4f46e5" />,
-      route: '/movements',
+      route: '/(app)/movements',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -109,7 +111,7 @@ export default function ControlCenterScreen() {
       title: 'Categorias',
       subtitle: 'Gerir famílias de produtos',
       icon: <Tag size={22} color="#4f46e5" />,
-      route: '/categories',
+      route: '/(app)/categories',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -118,7 +120,7 @@ export default function ControlCenterScreen() {
       title: 'Alertas de Validade',
       subtitle: 'Vencimentos e lotes',
       icon: <CalendarClock size={22} color="#4f46e5" />,
-      route: '/expiry',
+      route: '/(app)/expiry',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -127,7 +129,7 @@ export default function ControlCenterScreen() {
       title: 'Gestão de Inventário',
       subtitle: 'Lista de produtos e catálogo',
       icon: <Package size={22} color="#4f46e5" />,
-      route: '/products',
+      route: '/(app)/products',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -136,7 +138,7 @@ export default function ControlCenterScreen() {
       title: 'Inventário Físico',
       subtitle: 'Auditoria e ajuste de stock',
       icon: <ClipboardList size={22} color="#4f46e5" />,
-      route: '/inventory/audit',
+      route: '/(app)/inventory/audit',
       category: 'Operações de Stock',
       color: 'primary'
     },
@@ -145,7 +147,7 @@ export default function ControlCenterScreen() {
       title: 'Fluxo de Caixa',
       subtitle: 'Resumo financeiro e caixa',
       icon: <TrendingUp size={22} color="#8b5cf6" />,
-      route: '/finance',
+      route: '/(app)/finance',
       category: 'Gestão Financeira',
       color: 'violet'
     },
@@ -154,7 +156,7 @@ export default function ControlCenterScreen() {
       title: 'Relatórios PDF',
       subtitle: 'Exportar listas e KPI',
       icon: <BarChart3 size={22} color="#0ea5e9" />,
-      route: '/reports',
+      route: '/(app)/reports',
       category: 'Dados e Análises',
       color: 'sky'
     },
@@ -163,7 +165,7 @@ export default function ControlCenterScreen() {
       title: 'Gestão de Equipa',
       subtitle: 'Permissões e acessos',
       icon: <Shield size={22} color="#f43f5e" />,
-      route: '/users',
+      route: '/(app)/users',
       category: 'Sistema e Segurança',
       color: 'red'
     },
@@ -172,7 +174,7 @@ export default function ControlCenterScreen() {
       title: 'Recursos Humanos',
       subtitle: 'Funcionários, salários e ponto',
       icon: <Users size={22} color="#059669" />,
-      route: '/hr',
+      route: '/(app)/hr',
       category: 'Capital Humano',
       color: 'emerald'
     },
@@ -181,7 +183,7 @@ export default function ControlCenterScreen() {
       title: 'Histórico de Auditoria',
       subtitle: 'Log completo de ações',
       icon: <HistoryIcon size={22} color="#f43f5e" />,
-      route: '/history',
+      route: '/(app)/history',
       category: 'Sistema e Segurança',
       color: 'red'
     },
@@ -190,7 +192,7 @@ export default function ControlCenterScreen() {
       title: 'Backup e Nuvem',
       subtitle: 'Cópias e sincronização',
       icon: <Download size={22} color="#f43f5e" />,
-      route: '/backup',
+      route: '/(app)/backup',
       category: 'Sistema e Segurança',
       color: 'red'
     },
@@ -199,7 +201,7 @@ export default function ControlCenterScreen() {
       title: 'Pedidos',
       subtitle: 'Gestão de encomendas',
       icon: <ShoppingCart size={22} color="#0ea5e9" />,
-      route: '/orders',
+      route: '/(app)/orders',
       category: 'Operações de Stock',
       color: 'sky'
     },
@@ -208,7 +210,7 @@ export default function ControlCenterScreen() {
       title: 'Definições',
       subtitle: 'Configurações do sistema',
       icon: <Settings size={22} color="#64748b" />,
-      route: '/settings',
+      route: '/(app)/settings',
       category: 'Sistema e Segurança',
       color: 'slate'
     }
@@ -279,7 +281,7 @@ export default function ControlCenterScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Módulos de Gestão" />
       
       <View className="px-6 py-4">

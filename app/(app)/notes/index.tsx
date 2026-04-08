@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, FlatList, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useNotes } from '@/features/notes/hooks/useNotes'
+import { useToastStore } from '@/store/useToastStore'
 import { formatShortDate } from '@/utils/formatters'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
@@ -11,13 +12,13 @@ import EmptyState from '@/components/ui/EmptyState'
 import { Plus, FileText, ChevronRight, FileCheck, FileSignature, FileInput } from 'lucide-react-native'
 import Badge from '@/components/ui/Badge'
 import NoteFormModal from '@/features/notes/components/NoteFormModal'
-import { useState } from 'react'
 import { feedback } from '@/utils/haptics'
 
 export default function NotesListScreen() {
   const router = useRouter()
   const [modalVisible, setModalVisible] = useState(false)
   const { notes, isLoading, createNote } = useNotes()
+  const showToast = useToastStore((state: any) => state.show)
 
   const renderItem = ({ item }: { item: any }) => {
     let typeLabel = 'Transferência'
@@ -36,7 +37,13 @@ export default function NotesListScreen() {
     }
 
     return (
-      <TouchableOpacity onPress={() => {}} className="mb-4">
+      <TouchableOpacity 
+        onPress={() => {
+          feedback.light()
+          router.push(`/(app)/notes/${item.id}`)
+        }} 
+        className="mb-4"
+      >
         <Card variant="premium" className="p-5 flex-row items-center">
           <View className={`w-16 h-16 rounded-2xl items-center justify-center mr-4 ${item.type === 'entry' ? 'bg-emerald-500/10 border border-emerald-500/20' : item.type === 'exit' ? 'bg-red-500/10 border border-red-500/20' : 'bg-primary/10 border border-primary/20'}`}>
              <Icon size={28} color={item.type === 'entry' ? "#10b981" : item.type === 'exit' ? "#ef4444" : "#4f46e5"} />
@@ -69,7 +76,7 @@ export default function NotesListScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-900" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header 
         title="Notas e Guias" 
         rightElement={

@@ -1,6 +1,7 @@
 import { db } from '@/database/sqlite'
 import { Attendance } from '../features/hr/types'
 import { uuid } from '@/utils/uuid'
+import { addToSyncQueue } from '@/utils/syncData'
 
 export const attendanceRepository = {
   getToday(companyId: string, date: string): Attendance[] {
@@ -35,13 +36,16 @@ export const attendanceRepository = {
       data.breaks, data.status, data.justification, data.total_minutes, now, now
     ])
 
-    return {
+    const record: Attendance = {
       id,
       ...data,
       created_at: now,
       updated_at: now,
-      synced: 0
+      synced: 0 as const
     }
+
+    addToSyncQueue('attendance', 'INSERT', record)
+    return record
   },
 
   update(companyId: string, id: string, data: Partial<Attendance>): void {
@@ -55,20 +59,34 @@ export const attendanceRepository = {
       SET ${fields}, updated_at = ?, synced = 0 
       WHERE company_id = ? AND id = ?
     `, [...values, now, companyId, id])
+
+    const updatedRecord = db.getFirstSync<Attendance>(
+      'SELECT * FROM attendance WHERE company_id = ? AND id = ?',
+      [companyId, id]
+    )
+    if (updatedRecord) {
+      addToSyncQueue('attendance', 'UPDATE', updatedRecord)
+    }
   },
 
   getPeriodSummary(companyId: string, month: string, year: string) {
     const period = `${year}-${month}`
     return db.getAllSync(`
-      SELECT 
-        e.id,
+      SELECT
+        e.id as employee_id,
         e.name as employee_name,
-        COUNT(a.id) as present_days,
-        SUM(a.total_minutes) as total_minutes
+        COUNT(CASE WHEN a.status IN ('present', 'late') THEN 1 END) as present_days,
+        COUNT(CASE WHEN a.status = 'late' THEN 1 END) as late_days,
+        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
+        COUNT(CASE WHEN a.status = 'justified' THEN 1 END) as justified_days,
+        COALESCE(SUM(a.total_minutes) / 60.0, 0) as total_hours
       FROM employees e
-      LEFT JOIN attendance a ON e.id = a.employee_id AND a.date LIKE ?
+      LEFT JOIN attendance a ON e.id = a.employee_id
+        AND a.company_id = ?
+        AND a.date LIKE ?
       WHERE e.company_id = ? AND e.is_active = 1
       GROUP BY e.id
-    `, [`${period}%`, companyId])
+      ORDER BY e.name ASC
+    `, [companyId, `${period}%`, companyId])
   }
 }

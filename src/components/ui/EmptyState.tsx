@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { Info } from 'lucide-react-native'
+import { Info, Plus } from 'lucide-react-native'
 import Button from './Button'
 
 interface EmptyStateProps {
@@ -8,6 +8,7 @@ interface EmptyStateProps {
   title: string
   description?: string
   actionLabel?: string
+  actionIcon?: React.ReactNode
   onAction?: () => void
 }
 
@@ -16,6 +17,7 @@ export default function EmptyState({
   title, 
   description, 
   actionLabel, 
+  actionIcon,
   onAction 
 }: EmptyStateProps) {
   return (
@@ -36,6 +38,7 @@ export default function EmptyState({
           title={actionLabel} 
           onPress={onAction} 
           fullWidth={false}
+          icon={actionIcon || <Plus size={20} color="white" />}
           className="px-8"
         />
       )}

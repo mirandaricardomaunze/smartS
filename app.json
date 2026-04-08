@@ -2,7 +2,7 @@
   "expo": {
     "name": "SmartS",
     "slug": "smarts",
-    "version": "1.0.0",
+    "version": "2.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "smarts",
@@ -12,7 +12,12 @@
       "expo-camera",
       "expo-notifications",
       "expo-image-picker",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "@sentry/react-native/expo"
+    ],
+    "android": {
+      "package": "com.mirandamaunze.smarts",
+      "versionCode": 1
+    }
   }
 }

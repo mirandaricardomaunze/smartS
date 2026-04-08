@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { authService } from '../services/authService'
 import { useAuthStore } from '../store/authStore'
 import { User } from '@/types'
@@ -7,6 +7,13 @@ export function useAuth() {
   const { user, isLoading: isStoreLoading } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isMounted = useRef(true)
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
   const login = useCallback(async (email: string, pass: string) => {
     try {
@@ -14,10 +21,10 @@ export function useAuth() {
       setError(null)
       await authService.login(email, pass)
     } catch (e: any) {
-      setError(e.message || 'Erro ao efetuar login')
+      if (isMounted.current) setError(e.message || 'Erro ao efetuar login')
       throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [])
 
@@ -28,7 +35,7 @@ export function useAuth() {
     } catch (e: any) {
       console.error(e)
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [])
 
@@ -40,10 +47,10 @@ export function useAuth() {
       await usersService.update(user.id, data)
       useAuthStore.getState().setUser({ ...user, ...data })
     } catch (e: any) {
-      setError(e.message || 'Erro ao atualizar perfil')
+      if (isMounted.current) setError(e.message || 'Erro ao atualizar perfil')
       throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [user])
 
@@ -53,10 +60,10 @@ export function useAuth() {
       setError(null)
       await authService.forgotPassword(email)
     } catch (e: any) {
-      setError(e.message || 'Erro ao solicitar recuperação')
+      if (isMounted.current) setError(e.message || 'Erro ao solicitar recuperação')
       throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [])
 
@@ -66,10 +73,10 @@ export function useAuth() {
       setError(null)
       await authService.updatePassword(password)
     } catch (e: any) {
-      setError(e.message || 'Erro ao atualizar palavra-passe')
+      if (isMounted.current) setError(e.message || 'Erro ao atualizar palavra-passe')
       throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [])
 
@@ -79,12 +86,25 @@ export function useAuth() {
       setError(null)
       await authService.updateEmail(email)
     } catch (e: any) {
-      setError(e.message || 'Erro ao atualizar e-mail')
+      if (isMounted.current) setError(e.message || 'Erro ao atualizar e-mail')
       throw e
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }, [])
 
-  return { user, isStoreLoading, isLoading, error, login, logout, updateProfile, forgotPassword, resetPassword, updateEmail }
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await authService.loginWithGoogle()
+    } catch (e: any) {
+      if (isMounted.current) setError(e.message || 'Erro ao efetuar login com Google')
+      throw e
+    } finally {
+      if (isMounted.current) setIsLoading(false)
+    }
+  }, [])
+
+  return { user, isStoreLoading, isLoading, error, login, loginWithGoogle, logout, updateProfile, forgotPassword, resetPassword, updateEmail }
 }

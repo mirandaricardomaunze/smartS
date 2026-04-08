@@ -124,10 +124,10 @@ export default function ScannerScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-white dark:bg-slate-950 flex-1" withHeader>
+    <Screen padHorizontal={false} withHeader>
       <Header title="Scanner de Código de Barras" showBack />
       
-      <View className="flex-1 relative bg-slate-950">
+      <View className="flex-1 relative bg-[#0f172a]">
         <View className="flex-1 overflow-hidden">
           <CameraView 
             style={StyleSheet.absoluteFillObject}

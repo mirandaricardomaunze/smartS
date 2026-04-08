@@ -1,19 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, useColorScheme } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import PlanGate from '@/components/ui/PlanGate'
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, useColorScheme } from 'react-native'
 import { useBiometrics } from '@/hooks/useBiometrics'
 import BiometricLock from '@/components/ui/BiometricLock'
 import { useToastStore } from '@/store/useToastStore'
 import Screen from '@/components/layout/Screen'
 import Header from '@/components/layout/Header'
 import Card from '@/components/ui/Card'
-import { 
-  FileBarChart, 
-  HardDriveDownload, 
-  TrendingUp, 
-  CalendarDays, 
-  FileDown, 
-  Box, 
-  Layers, 
+import {
+  FileBarChart,
+  TrendingUp,
+  CalendarDays,
+  Box,
   Database,
   ArrowRight,
   Scan,
@@ -24,17 +22,73 @@ import {
   Share2,
   Mail
 } from 'lucide-react-native'
-import { reportService } from '@/features/reports/services/reportService'
 import { reportRepository } from '@/repositories/reportRepository'
 import { db } from '@/database/sqlite'
 import { pdfService } from '@/services/pdfService'
-import Animated, { FadeInUp, FadeInDown, SlideInRight } from 'react-native-reanimated'
+import { supplierRepository } from '@/repositories/supplierRepository'
+import { historyRepository } from '@/repositories/historyRepository'
+import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { feedback } from '@/utils/haptics'
 
 import { useFormatter } from '@/hooks/useFormatter'
 import { useCompanyStore } from '@/store/companyStore'
 import { productsRepository } from '@/repositories/productsRepository'
+
+
+type ReportCardProps = {
+  title: string
+  subtitle: string
+  icon: React.ReactNode
+  onShare: () => void
+  onEmail?: () => void
+  isExporting?: boolean
+  color?: 'indigo' | 'emerald' | 'violet' | 'sky'
+}
+
+function ReportCard({ title, subtitle, icon, onShare, onEmail, isExporting = false, color = 'indigo' }: ReportCardProps) {
+  const isDark = useColorScheme() === 'dark'
+  const bgColor = isDark ? `bg-${color}-500/10` : `bg-${color}-50`
+  const iconBg = isDark ? `bg-${color}-500/20` : `bg-white`
+
+  return (
+    <View className="mb-4">
+      <Card variant="premium" className={`p-4 border-slate-100 dark:border-white/5 ${bgColor}`}>
+        <View className="flex-row items-center">
+          <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${iconBg} shadow-sm border border-slate-100 dark:border-white/10`}>
+            {icon}
+          </View>
+          <View className="flex-1">
+            <Text style={{ fontFamily: 'Inter-Bold' }} className="text-slate-900 dark:text-white font-bold text-base">{title}</Text>
+            <Text className="text-slate-500 dark:text-slate-400 text-xs">{subtitle}</Text>
+          </View>
+          <View className="flex-row space-x-2">
+            <TouchableOpacity
+              onPress={onShare}
+              disabled={isExporting}
+              className="w-10 h-10 rounded-full bg-indigo-500 items-center justify-center shadow-lg shadow-indigo-500/20"
+            >
+              {isExporting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Share2 size={18} color="white" />
+              )}
+            </TouchableOpacity>
+            {onEmail && (
+              <TouchableOpacity
+                onPress={onEmail}
+                disabled={isExporting}
+                className="w-10 h-10 rounded-full bg-slate-800 dark:bg-white items-center justify-center shadow-lg shadow-slate-500/20"
+              >
+                <Mail size={18} color={isDark ? '#0f172a' : 'white'} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Card>
+    </View>
+  )
+}
 
 export default function ReportsScreen() {
   const colorScheme = useColorScheme()
@@ -105,16 +159,11 @@ export default function ReportsScreen() {
     setIsGenerating('movements')
     feedback.light()
     try {
-      const movements = reportRepository.getMovementsData(activeCompanyId, 30)
-      // Note: reportRepository.getMovementsData returns summary + topMoved + byDay. 
-      // We often need the raw list for PDF. Let's assume we need a raw list for a detailed PDF.
-      // For now, I'll use the stats provided by reportRepository or query directly if needed.
-      // Re-reading reportRepository: it doesn't return the raw list. I should use the repository directly.
       const rawMovements = db.getAllSync<any>(
         'SELECT m.*, p.name as product_name FROM movements m JOIN products p ON m.product_id = p.id WHERE m.company_id = ? ORDER BY m.created_at DESC LIMIT 100',
         [activeCompanyId]
       )
-      await pdfService.generateMovementsReport(activeCompany || { name: 'SmartS' }, rawMovements)
+      await pdfService.generateMovementsReport(activeCompany!, rawMovements)
       useToastStore.getState().show('Relatório de Movimentos gerado!', 'success')
     } catch (e) {
       useToastStore.getState().show('Erro ao gerar PDF de Movimentos', 'error')
@@ -129,7 +178,7 @@ export default function ReportsScreen() {
     feedback.light()
     try {
       const lots = reportRepository.getExpiryData(activeCompanyId)
-      await pdfService.generateExpiryReport(activeCompany || { name: 'SmartS' }, lots)
+      await pdfService.generateExpiryReport(activeCompany!, lots)
       useToastStore.getState().show('Relatório de Validades gerado!', 'success')
     } catch (e) {
       useToastStore.getState().show('Erro ao gerar PDF de Validades', 'error')
@@ -144,7 +193,7 @@ export default function ReportsScreen() {
     feedback.light()
     try {
       const sales = reportRepository.getSalesData(activeCompanyId, 30)
-      await pdfService.generateSalesReport(activeCompany || { name: 'SmartS' }, sales)
+      await pdfService.generateSalesReport(activeCompany!, sales)
       useToastStore.getState().show('Histórico de Vendas gerado!', 'success')
     } catch (e) {
       useToastStore.getState().show('Erro ao gerar PDF de Vendas', 'error')
@@ -162,7 +211,7 @@ export default function ReportsScreen() {
         'SELECT m.*, p.name as product_name FROM movements m JOIN products p ON m.product_id = p.id WHERE m.company_id = ? ORDER BY m.created_at DESC LIMIT 100',
         [activeCompanyId]
       )
-      const html = pdfService.getMovementsReportHtml(activeCompany || { name: 'SmartS' }, rawMovements)
+      const html = pdfService.getMovementsReportHtml(activeCompany!, rawMovements)
       await pdfService.shareByEmail(html, `Relatório de Movimentos - ${activeCompany?.name}`, 'Relatório de stock em anexo.')
       useToastStore.getState().show('E-mail preparado!', 'success')
     } catch (e: any) {
@@ -178,7 +227,7 @@ export default function ReportsScreen() {
     feedback.light()
     try {
       const lots = reportRepository.getExpiryData(activeCompanyId)
-      const html = pdfService.getExpiryReportHtml(activeCompany || { name: 'SmartS' }, lots)
+      const html = pdfService.getExpiryReportHtml(activeCompany!, lots)
       await pdfService.shareByEmail(html, `Relatório de Validades - ${activeCompany?.name}`, 'Relatório de validades em anexo.')
       useToastStore.getState().show('E-mail preparado!', 'success')
     } catch (e: any) {
@@ -194,7 +243,7 @@ export default function ReportsScreen() {
     feedback.light()
     try {
       const sales = reportRepository.getSalesData(activeCompanyId, 30)
-      const html = pdfService.getSalesReportHtml(activeCompany || { name: 'SmartS' }, sales)
+      const html = pdfService.getSalesReportHtml(activeCompany!, sales)
       await pdfService.shareByEmail(html, `Histórico de Vendas - ${activeCompany?.name}`, 'Histórico de vendas em anexo.')
       useToastStore.getState().show('E-mail preparado!', 'success')
     } catch (e: any) {
@@ -211,7 +260,7 @@ export default function ReportsScreen() {
     
     try {
       const allProducts = productsRepository.getAll(activeCompanyId)
-      await pdfService.generateStockReport(activeCompany || { name: 'SmartS Inventário' }, allProducts)
+      await pdfService.generateStockReport(activeCompany!, allProducts)
       useToastStore.getState().show('Relatório de Stock gerado!', 'success')
     } catch (e) {
       useToastStore.getState().show('Erro ao gerar PDF de Stock', 'error')
@@ -225,7 +274,7 @@ export default function ReportsScreen() {
     feedback.light()
     
     try {
-      await pdfService.generateFinancialReport(activeCompany || { name: 'SmartS Financeiro' }, {
+      await pdfService.generateFinancialReport(activeCompany!, {
         totalIncomes: stats.revenue,
         totalExpenses: stats.expenses
       })
@@ -244,10 +293,10 @@ export default function ReportsScreen() {
     
     try {
       const allProducts = productsRepository.getAll(activeCompanyId)
-      const html = pdfService.getStockReportHtml(activeCompany || { name: 'SmartS Inventário' }, allProducts)
+      const html = pdfService.getStockReportHtml(activeCompany!, allProducts)
       await pdfService.shareByEmail(
         html, 
-        `Relatório de Stock - ${activeCompany?.name || 'SmartS'}`,
+        `Relatório de Stock - ${activeCompany?.name}`,
         'Em anexo o relatório de stock atualizado.'
       )
       useToastStore.getState().show('E-mail preparado!', 'success')
@@ -263,13 +312,13 @@ export default function ReportsScreen() {
     feedback.light()
     
     try {
-      const html = pdfService.getFinancialReportHtml(activeCompany || { name: 'SmartS Financeiro' }, {
+      const html = pdfService.getFinancialReportHtml(activeCompany!, {
         totalIncomes: stats.revenue,
         totalExpenses: stats.expenses
       })
       await pdfService.shareByEmail(
         html, 
-        `Relatório Financeiro - ${activeCompany?.name || 'SmartS'}`,
+        `Relatório Financeiro - ${activeCompany?.name}`,
         'Em anexo o relatório financeiro dos últimos 30 dias.'
       )
       useToastStore.getState().show('E-mail preparado!', 'success')
@@ -280,70 +329,66 @@ export default function ReportsScreen() {
     }
   }
 
-  const ReportCard = ({ 
-    title, 
-    subtitle, 
-    icon, 
-    onShare,
-    onEmail, 
-    isExporting = false,
-    color = "indigo" 
-  }: { 
-    title: string, 
-    subtitle: string, 
-    icon: React.ReactNode, 
-    onShare: () => void,
-    onEmail?: () => void,
-    isExporting?: boolean,
-    color?: "indigo" | "emerald" | "violet" | "sky"
-  }) => {
-    const bgColor = isDark 
-      ? `bg-${color}-500/10` 
-      : `bg-${color}-50`
-      
-    const iconBg = isDark
-      ? `bg-${color}-500/20`
-      : `bg-white`
+  const handleExportSuppliers = async () => {
+    if (!activeCompanyId) return
+    setIsGenerating('suppliers')
+    feedback.light()
+    try {
+      const suppliers = supplierRepository.getAll(activeCompanyId)
+      await pdfService.generateSuppliersReport(activeCompany!, suppliers)
+      useToastStore.getState().show('Lista de Fornecedores gerada!', 'success')
+    } catch (e) {
+      useToastStore.getState().show('Erro ao gerar PDF de Fornecedores', 'error')
+    } finally {
+      setIsGenerating(null)
+    }
+  }
 
-    return (
-      <View className="mb-4">
-        <Card variant="premium" className={`p-4 border-slate-100 dark:border-white/5 ${bgColor}`}>
-          <View className="flex-row items-center">
-            <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${iconBg} shadow-sm border border-slate-100 dark:border-white/10`}>
-              {icon}
-            </View>
-            <View className="flex-1">
-              <Text style={{ fontFamily: 'Inter-Bold' }} className="text-slate-900 dark:text-white font-bold text-base">{title}</Text>
-              <Text className="text-slate-500 dark:text-slate-400 text-xs">{subtitle}</Text>
-            </View>
-            
-            <View className="flex-row space-x-2">
-              <TouchableOpacity 
-                onPress={onShare} 
-                disabled={isExporting}
-                className="w-10 h-10 rounded-full bg-indigo-500 items-center justify-center shadow-lg shadow-indigo-500/20"
-              >
-                {isExporting ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Share2 size={18} color="white" />
-                )}
-              </TouchableOpacity>
+  const handleEmailSuppliers = async () => {
+    if (!activeCompanyId) return
+    setIsGenerating('email-suppliers')
+    feedback.light()
+    try {
+      const suppliers = supplierRepository.getAll(activeCompanyId)
+      const html = pdfService.getSuppliersReportHtml(activeCompany!, suppliers)
+      await pdfService.shareByEmail(html, `Lista de Fornecedores - ${activeCompany?.name}`, 'Em anexo a lista de fornecedores atualizada.')
+      useToastStore.getState().show('E-mail preparado!', 'success')
+    } catch (e: any) {
+      useToastStore.getState().show(e.message || 'Erro ao enviar e-mail', 'error')
+    } finally {
+      setIsGenerating(null)
+    }
+  }
 
-              {onEmail && (
-                <TouchableOpacity 
-                  onPress={onEmail} 
-                  disabled={isExporting}
-                  className="w-10 h-10 rounded-full bg-slate-800 dark:bg-white items-center justify-center shadow-lg shadow-slate-500/20"
-                >
-                  <Mail size={18} color={isDark ? "#0f172a" : "white"} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </Card>
-      </View>
-    )
+  const handleExportAudit = async () => {
+    if (!activeCompanyId) return
+    setIsGenerating('audit')
+    feedback.light()
+    try {
+      const entries = historyRepository.getAll(activeCompanyId, 100)
+      await pdfService.generateAuditReport(activeCompany!, entries)
+      useToastStore.getState().show('Relatório de Auditoria gerado!', 'success')
+    } catch (e) {
+      useToastStore.getState().show('Erro ao gerar PDF de Auditoria', 'error')
+    } finally {
+      setIsGenerating(null)
+    }
+  }
+
+  const handleEmailAudit = async () => {
+    if (!activeCompanyId) return
+    setIsGenerating('email-audit')
+    feedback.light()
+    try {
+      const entries = historyRepository.getAll(activeCompanyId, 100)
+      const html = pdfService.getAuditReportHtml(activeCompany!, entries)
+      await pdfService.shareByEmail(html, `Auditoria de Atividade - ${activeCompany?.name}`, 'Em anexo o relatório de auditoria do sistema.')
+      useToastStore.getState().show('E-mail preparado!', 'success')
+    } catch (e: any) {
+      useToastStore.getState().show(e.message || 'Erro ao enviar e-mail', 'error')
+    } finally {
+      setIsGenerating(null)
+    }
   }
 
   if (!isUnlocked) {
@@ -351,15 +396,16 @@ export default function ReportsScreen() {
   }
 
   return (
-    <Screen padHorizontal={false} className="bg-slate-50 dark:bg-slate-950 flex-1" withHeader>
-      <Header title="Relatórios" showBack />
+    <PlanGate feature="hasReports" requiredPlan="BASIC">
+      <Screen padHorizontal={false} withHeader>
+        <Header title="Relatórios" showBack />
       
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60, paddingTop: 20 }}>
         {/* Executive Summary Overhaul */}
         <View className="px-6 mb-8">
             <Animated.View entering={FadeInDown.duration(800)}>
               <LinearGradient
-                colors={isDark ? ['#1e1b4b', '#0f172a'] : ['#4f46e5', '#6366f1']} 
+                colors={isDark ? ['#0f172a', '#0f172a'] : ['#4f46e5', '#6366f1']} 
                 className="p-8 rounded-[40px] shadow-premium-lg border border-white/10 overflow-hidden"
               >
                  <View className="flex-row items-center justify-between mb-8">
@@ -500,15 +546,19 @@ export default function ReportsScreen() {
             title="Lista de Fornecedores"
             subtitle="Contactos e dados fiscais"
             icon={<FileText size={24} color="#10b981" />}
-            onShare={() => useToastStore.getState().show('Disponível brevemente', 'info')}
+            onShare={handleExportSuppliers}
+            onEmail={handleEmailSuppliers}
+            isExporting={isGenerating === 'suppliers' || isGenerating === 'email-suppliers'}
             color="emerald"
           />
 
           <ReportCard
             title="Atividade de Utilizadores"
-            subtitle="Auditoria de ações no sistema"
+            subtitle="Auditoria de ações no sistema (últimos 100 registos)"
             icon={<Download size={24} color="#0ea5e9" />}
-            onShare={() => useToastStore.getState().show('Disponível brevemente', 'info')}
+            onShare={handleExportAudit}
+            onEmail={handleEmailAudit}
+            isExporting={isGenerating === 'audit' || isGenerating === 'email-audit'}
             color="sky"
           />
         </View>
@@ -528,6 +578,7 @@ export default function ReportsScreen() {
             </View>
          </Animated.View>
       </ScrollView>
-    </Screen>
+      </Screen>
+    </PlanGate>
   )
 }

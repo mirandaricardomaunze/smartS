@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native'
-import { X, User, Mail, Save, Lock, Shield } from 'lucide-react-native'
+import { X, User, Mail, Save, Lock, Shield, Edit2 } from 'lucide-react-native'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { User as UserType } from '@/types'
@@ -70,7 +70,7 @@ export default function ProfileFormModal({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      height={0.5}
+      height={0.85}
     >
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -137,12 +137,12 @@ export default function ProfileFormModal({
           {/* Footer */}
           <View className="px-6 pt-6 pb-12 bg-white dark:bg-slate-950">
             <Button 
+              onPress={handleSave}
+              isLoading={isSubmitting}
               variant="gradient"
               gradientColors={['#4f46e5', '#4338ca']}
               title="Guardar Alterações" 
-              onPress={handleSave}
-              isLoading={isSubmitting}
-              icon={<Save size={20} color="white" />}
+              icon={<Edit2 size={20} color="white" />}
               className="h-14 rounded-2xl shadow-lg shadow-primary/30"
             />
           </View>
